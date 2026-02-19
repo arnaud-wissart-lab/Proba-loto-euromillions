@@ -121,5 +121,7 @@ dotnet test
 ```
 
 ## Endpoints API utiles
-- `GET /api/status` : nb tirages Loto/EuroMillions + derniere synchro reussie.
+- `GET /api/status` : `lastSyncAt`, compteurs, `lastDrawDate` et `nextDrawDate` par jeu.
+- `GET /api/stats/{game}` : frequences par numero (main/bonus), derniere sortie, periode analysee.
+- `POST /api/grids/generate` : generation de 1 a 100 grilles uniques (`uniform`, `frequency`, `recency`) avec score explicable.
 - `POST /api/admin/sync` : declenche une synchro manuelle (header `X-Api-Key` requis).

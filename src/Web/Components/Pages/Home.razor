@@ -1,6 +1,6 @@
 @page "/"
 @rendermode InteractiveServer
-@inject StatusApiClient StatusApiClient
+@inject LotteryApiClient LotteryApiClient
 @inject ILogger<Home> Logger
 
 <PageTitle>Probabilités Loto & EuroMillions</PageTitle>
@@ -26,6 +26,15 @@
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
             Ce site ne prédit aucun tirage. Les contenus sont purement informatifs et statistiques.
         </MudAlert>
+
+        <MudStack Row="true" Spacing="2" Class="mt-4 hero-actions">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/grilles">
+                Générer des grilles
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/statistiques">
+                Voir les statistiques
+            </MudButton>
+        </MudStack>
     </MudPaper>
 
     @if (!string.IsNullOrWhiteSpace(_messageErreur))
@@ -38,26 +47,32 @@
     <MudGrid Class="mt-4">
         <MudItem xs="12" md="4">
             <MudPaper Class="kpi-card" Elevation="1">
-                <MudText Typo="Typo.overline">Dernière mise à jour</MudText>
-                <MudText Typo="Typo.h6">@FormatDate(_status.DerniereMiseAJourUtc)</MudText>
+                <MudText Typo="Typo.overline">Dernière synchronisation</MudText>
+                <MudText Typo="Typo.h6">@FormatDateTime(_status.LastSyncAt)</MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="4">
             <MudPaper Class="kpi-card" Elevation="1">
-                <MudText Typo="Typo.overline">Nb tirages Loto</MudText>
-                <MudText Typo="Typo.h6">@_status.NbTiragesLoto</MudText>
+                <MudText Typo="Typo.overline">Loto</MudText>
+                <MudText Typo="Typo.h6">@_status.Loto.DrawsCount tirages</MudText>
+                <MudText Typo="Typo.caption">
+                    Dernier: @FormatDate(_status.Loto.LastDrawDate) | Prochain: @FormatDate(_status.Loto.NextDrawDate)
+                </MudText>
             </MudPaper>
         </MudItem>
         <MudItem xs="12" md="4">
             <MudPaper Class="kpi-card" Elevation="1">
-                <MudText Typo="Typo.overline">Nb tirages EuroMillions</MudText>
-                <MudText Typo="Typo.h6">@_status.NbTiragesEuroMillions</MudText>
+                <MudText Typo="Typo.overline">EuroMillions</MudText>
+                <MudText Typo="Typo.h6">@_status.EuroMillions.DrawsCount tirages</MudText>
+                <MudText Typo="Typo.caption">
+                    Dernier: @FormatDate(_status.EuroMillions.LastDrawDate) | Prochain: @FormatDate(_status.EuroMillions.NextDrawDate)
+                </MudText>
             </MudPaper>
         </MudItem>
     </MudGrid>
 
     <MudPaper Elevation="0" Class="mt-4 disclaimer-panel">
-        <MudText Typo="Typo.body2">@_status.Avertissement</MudText>
+        <MudText Typo="Typo.body2">@_status.Disclaimer</MudText>
     </MudPaper>
 </MudContainer>
 
@@ -67,7 +82,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var status = await StatusApiClient.GetStatusAsync(CancellationToken.None);
+        var status = await LotteryApiClient.GetStatusAsync(CancellationToken.None);
         if (status is not null)
         {
             _status = status;
@@ -78,13 +93,20 @@
         _messageErreur = "API indisponible temporairement. Les valeurs affichées sont des valeurs de secours.";
     }
 
-    private static string FormatDate(DateTimeOffset value)
+    private static string FormatDate(DateOnly? value)
     {
-        if (value == default)
+        if (value is null)
         {
             return "En attente";
         }
 
-        return value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
+        return value.Value.ToString("dd/MM/yyyy");
     }
+
+    private static string FormatDate(DateOnly value) => value.ToString("dd/MM/yyyy");
+
+    private static string FormatDateTime(DateTimeOffset value) =>
+        value == DateTimeOffset.MinValue
+            ? "En attente"
+            : value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
 }

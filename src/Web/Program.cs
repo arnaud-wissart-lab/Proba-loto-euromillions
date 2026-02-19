@@ -10,14 +10,14 @@ builder.Services.AddMudServices();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddHttpClient(StatusApiClient.ClientName, client =>
+builder.Services.AddHttpClient(LotteryApiClient.ClientName, client =>
 {
     var configuredBaseUrl = builder.Configuration["Api:BaseUrl"];
     client.BaseAddress = string.IsNullOrWhiteSpace(configuredBaseUrl)
         ? new Uri("https+http://api")
         : new Uri(configuredBaseUrl);
 });
-builder.Services.AddScoped<StatusApiClient>();
+builder.Services.AddScoped<LotteryApiClient>();
 
 var app = builder.Build();
 

@@ -1,0 +1,185 @@
+@page "/grilles"
+@rendermode InteractiveServer
+@inject LotteryApiClient LotteryApiClient
+@inject ILogger<GenerateGrids> Logger
+@inject IJSRuntime Js
+
+<PageTitle>Générer des grilles</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="page-container">
+    <MudPaper Elevation="1" Class="section-panel">
+        <MudText Typo="Typo.h4" GutterBottom="true">Générer des grilles</MudText>
+        <MudText Typo="Typo.body2">
+            Les grilles sont générées à partir de statistiques observées (fréquence/récence).
+            Chaque combinaison reste équiprobable théoriquement.
+        </MudText>
+
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" md="4">
+                <MudSelect T="string" Label="Jeu" Variant="Variant.Outlined" @bind-Value="_selectedGame">
+                    <MudSelectItem T="string" Value="@("Loto")">Loto</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("EuroMillions")">EuroMillions</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudNumericField T="int"
+                                 Label="Nombre de grilles"
+                                 Variant="Variant.Outlined"
+                                 Min="1"
+                                 Max="100"
+                                 Immediate="true"
+                                 @bind-Value="_requestedGridCount" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string" Label="Stratégie" Variant="Variant.Outlined" @bind-Value="_selectedStrategy">
+                    <MudSelectItem T="string" Value="@("uniform")">A) Aléatoire (uniforme)</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("frequency")">B) Pondéré par fréquence globale</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("recency")">C) Pondéré par récence (exp)</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudSlider T="int"
+                   Class="mt-3"
+                   Min="1"
+                   Max="100"
+                   Step="1"
+                   ValueLabel="true"
+                   Color="Color.Primary"
+                   @bind-Value="_requestedGridCount" />
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@_isLoading"
+                   OnClick="@GenerateAsync"
+                   Class="mt-3">
+            @if (_isLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Générer
+        </MudButton>
+    </MudPaper>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-4">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @if (_result is not null)
+    {
+        <MudPaper Elevation="0" Class="mt-4 disclaimer-panel">
+            <MudText Typo="Typo.body2">@_result.Disclaimer</MudText>
+            <MudText Typo="Typo.caption">
+                Généré le @FormatDateTime(_result.GeneratedAt) | Stratégie: @GetStrategyLabel(_result.Strategy)
+                | Combinaisons possibles: @_result.TotalCombinations.ToString("N0")
+            </MudText>
+        </MudPaper>
+
+        @if (!string.IsNullOrWhiteSpace(_result.Warning))
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+                @_result.Warning
+            </MudAlert>
+        }
+
+        <MudGrid Class="mt-2">
+            @foreach (var entry in _result.Grids.Select((grid, index) => new { Grid = grid, Index = index + 1 }))
+            {
+                <MudItem xs="12" md="6" lg="4">
+                    <MudPaper Elevation="1" Class="grid-card">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.subtitle2">Grille #@entry.Index</MudText>
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small">
+                                Score @entry.Grid.Score.ToString("0.00")/100
+                            </MudChip>
+                        </MudStack>
+
+                        <MudText Typo="Typo.caption" Class="mt-2">Numéros principaux</MudText>
+                        <MudStack Row="true" Spacing="1" Class="mt-1 wrap-stack">
+                            @foreach (var number in entry.Grid.MainNumbers)
+                            {
+                                <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small">@number</MudChip>
+                            }
+                        </MudStack>
+
+                        <MudText Typo="Typo.caption" Class="mt-2">Bonus</MudText>
+                        <MudStack Row="true" Spacing="1" Class="mt-1 wrap-stack">
+                            @foreach (var number in entry.Grid.BonusNumbers)
+                            {
+                                <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small">@number</MudChip>
+                            }
+                        </MudStack>
+
+                        <MudText Typo="Typo.caption" Class="mt-3">
+                            Top numéros (pondération): M[@string.Join(", ", entry.Grid.TopMainNumbers)] B[@string.Join(", ", entry.Grid.TopBonusNumbers)]
+                        </MudText>
+
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyGridAsync(entry.Grid))" Class="mt-1">
+                            Copier
+                        </MudButton>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private string _selectedGame = "Loto";
+    private int _requestedGridCount = 5;
+    private string _selectedStrategy = "uniform";
+    private bool _isLoading;
+    private string? _errorMessage;
+    private ApiGenerateGridsResponse? _result;
+
+    private async Task GenerateAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new ApiGenerateGridsRequest
+            {
+                Game = _selectedGame,
+                Count = Math.Clamp(_requestedGridCount, 1, 100),
+                Strategy = _selectedStrategy
+            };
+
+            _result = await LotteryApiClient.GenerateGridsAsync(request, CancellationToken.None);
+            if (_result is null)
+            {
+                _errorMessage = "Génération indisponible. Vérifiez la connectivité API.";
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Erreur de génération de grilles.");
+            _errorMessage = "Erreur inattendue lors de la génération.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task CopyGridAsync(ApiGeneratedGridResponse grid)
+    {
+        var text = $"Main: {string.Join("-", grid.MainNumbers)} | Bonus: {string.Join("-", grid.BonusNumbers)} | Score: {grid.Score:0.00}/100";
+        await Js.InvokeVoidAsync("navigator.clipboard.writeText", text);
+    }
+
+    private static string FormatDateTime(DateTimeOffset value) => value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
+
+    private static string GetStrategyLabel(string strategy) =>
+        strategy switch
+        {
+            "uniform" => "A) Aléatoire (uniforme)",
+            "frequency" => "B) Pondéré par fréquence globale",
+            "recency" => "C) Pondéré par récence",
+            _ => strategy
+        };
+}

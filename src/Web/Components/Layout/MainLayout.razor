@@ -9,10 +9,26 @@
     <MudAppBar Elevation="0" Dense="true" Class="main-appbar">
         <MudText Typo="Typo.h6">Probabilités Loto &amp; EuroMillions</MudText>
         <MudSpacer />
+        <MudStack Row="true" Spacing="1" Class="wrap-stack">
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/">Accueil</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/grilles">Générer</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/statistiques">Statistiques</MudButton>
+        </MudStack>
+        <MudSpacer />
         <MudText Typo="Typo.caption">Statistiques informatives</MudText>
     </MudAppBar>
+
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="layout-disclaimer-top">
+        Chaque combinaison est équiprobable. Les pondérations affichées sont purement informatives.
+    </MudAlert>
 
     <MudMainContent Class="main-content">
         @Body
     </MudMainContent>
+
+    <MudPaper Elevation="0" Class="layout-disclaimer-bottom">
+        <MudText Typo="Typo.caption">
+            Jeu responsable: les jeux d'argent comportent des risques (endettement, isolement, dépendance).
+        </MudText>
+    </MudPaper>
 </MudLayout>

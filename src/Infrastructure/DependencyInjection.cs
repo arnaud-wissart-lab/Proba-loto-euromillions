@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddScoped<IFdjArchiveClient, FdjArchiveClient>();
         services.AddSingleton<IFdjDrawFileParser, FdjDrawFileParser>();
         services.AddScoped<IStatusService, StatusService>();
+        services.AddScoped<IStatisticsService, StatisticsService>();
+        services.AddScoped<IGridGenerationService, GridGenerationService>();
 
         return services;
     }

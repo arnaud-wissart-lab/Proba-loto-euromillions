@@ -1,5 +1,7 @@
 using Application.Abstractions;
 using Application.Models;
+using Domain.Enums;
+using Domain.Services;
 using Infrastructure;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -63,8 +65,10 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-await using (var scope = app.Services.CreateAsyncScope())
+var autoMigrate = app.Configuration.GetValue("Database:AutoMigrate", true);
+if (autoMigrate)
 {
+    await using var scope = app.Services.CreateAsyncScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<LotteryDbContext>();
     await dbContext.Database.MigrateAsync();
 }
@@ -91,6 +95,52 @@ app.MapGet(
     .WithSummary("Récupère l'état statistique courant.")
     .WithDescription("Endpoint informatif : il ne prédit aucun tirage.")
     .Produces<StatusDto>(StatusCodes.Status200OK);
+
+app.MapGet(
+        "/api/stats/{game}",
+        async (string game, IStatisticsService statisticsService, CancellationToken cancellationToken) =>
+        {
+            if (!LotteryGameRulesCatalog.TryParseGame(game, out var parsedGame))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["game"] = ["Valeur invalide. Valeurs supportees: Loto, EuroMillions."]
+                });
+            }
+
+            var stats = await statisticsService.GetStatsAsync(parsedGame, cancellationToken);
+            return Results.Ok(stats);
+        })
+    .WithName("GetGameStats")
+    .WithTags("Statistiques")
+    .WithSummary("Retourne les statistiques de frequences et dernieres sorties d'un jeu.")
+    .Produces<GameStatsDto>(StatusCodes.Status200OK)
+    .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+app.MapPost(
+        "/api/grids/generate",
+        async (GenerateGridsRequestDto request, IGridGenerationService gridGenerationService, CancellationToken cancellationToken) =>
+        {
+            var errors = ValidateGenerateRequest(request, out var parsedGame, out var parsedStrategy);
+            if (errors.Count > 0)
+            {
+                return Results.ValidationProblem(errors);
+            }
+
+            var generated = await gridGenerationService.GenerateAsync(
+                parsedGame,
+                request.Count,
+                parsedStrategy,
+                cancellationToken);
+
+            return Results.Ok(generated);
+        })
+    .WithName("PostGenerateGrids")
+    .WithTags("Grilles")
+    .WithSummary("Genere des grilles uniques (uniforme, frequence, recence) avec score explicable.")
+    .Accepts<GenerateGridsRequestDto>("application/json")
+    .Produces<GenerateGridsResponseDto>(StatusCodes.Status200OK)
+    .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
 app.MapPost(
         "/api/admin/sync",
@@ -146,3 +196,32 @@ static bool TryValidateApiKey(HttpContext httpContext, string configuredApiKey)
     return configuredBytes.Length == providedBytes.Length
            && CryptographicOperations.FixedTimeEquals(configuredBytes, providedBytes);
 }
+
+static Dictionary<string, string[]> ValidateGenerateRequest(
+    GenerateGridsRequestDto request,
+    out LotteryGame game,
+    out GridGenerationStrategy strategy)
+{
+    game = default;
+    strategy = default;
+    var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+    if (!LotteryGameRulesCatalog.TryParseGame(request.Game, out game))
+    {
+        errors["game"] = ["Valeur invalide. Valeurs supportees: Loto, EuroMillions."];
+    }
+
+    if (!GridGenerationStrategyExtensions.TryParseStrategy(request.Strategy, out strategy))
+    {
+        errors["strategy"] = ["Valeur invalide. Valeurs supportees: uniform, frequency, recency."];
+    }
+
+    if (request.Count is < 1 or > 100)
+    {
+        errors["count"] = ["La valeur doit etre comprise entre 1 et 100."];
+    }
+
+    return errors;
+}
+
+public partial class Program;

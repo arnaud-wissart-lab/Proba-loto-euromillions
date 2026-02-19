@@ -1,0 +1,260 @@
+@page "/statistiques"
+@rendermode InteractiveServer
+@inject LotteryApiClient LotteryApiClient
+@inject ILogger<Statistics> Logger
+
+<PageTitle>Statistiques</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="page-container">
+    <MudPaper Elevation="1" Class="section-panel">
+        <MudText Typo="Typo.h4" GutterBottom="true">Statistiques</MudText>
+        <MudText Typo="Typo.body2">
+            Fréquences observées et dernière date de sortie par numéro.
+            Ces indicateurs n'altèrent pas l'équiprobabilité théorique des combinaisons futures.
+        </MudText>
+
+        <MudStack Row="true" Spacing="2" Class="mt-3 wrap-stack">
+            <MudChip T="string" Variant="Variant.Outlined" Color="Color.Info">
+                Dernière mise à jour: @FormatDateTime(_status?.LastSyncAt)
+            </MudChip>
+            <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary">
+                Tirages Loto: @_lotoStats?.TotalDraws
+            </MudChip>
+            <MudChip T="string" Variant="Variant.Outlined" Color="Color.Secondary">
+                Tirages EuroMillions: @_euroStats?.TotalDraws
+            </MudChip>
+        </MudStack>
+    </MudPaper>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-4">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    <MudTabs Rounded="true" Class="mt-4">
+        <MudTabPanel Text="Loto">
+            @if (_lotoStats is null)
+            {
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            }
+            else
+            {
+                <MudPaper Elevation="0" Class="section-panel">
+                    <MudText Typo="Typo.subtitle1">Période: @FormatDate(_lotoStats.PeriodStart) - @FormatDate(_lotoStats.PeriodEnd)</MudText>
+                    <MudText Typo="Typo.caption">Total tirages analysés: @_lotoStats.TotalDraws</MudText>
+
+                    <MudText Typo="Typo.h6" Class="mt-4">Numéros principaux</MudText>
+                    <MudTable Items="_lotoStats.MainStats" Hover="true" Dense="true" Class="stats-table">
+                        <HeaderContent>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.Number))">
+                                    Numéro
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.Occurrences))">
+                                    Occurrences
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.FrequencyPct))">
+                                    Fréquence (%)
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>Histogramme</MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.LastSeenDate ?? DateOnly.MinValue))">
+                                    Dernière sortie
+                                </MudTableSortLabel>
+                            </MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Numéro">@context.Number</MudTd>
+                            <MudTd DataLabel="Occurrences">@context.Occurrences</MudTd>
+                            <MudTd DataLabel="Fréquence">@context.FrequencyPct.ToString("0.00")</MudTd>
+                            <MudTd DataLabel="Histogramme">
+                                <div class="mini-bar-track">
+                                    <div class="mini-bar-fill" style="@BuildBarWidth(context.FrequencyPct)"></div>
+                                </div>
+                            </MudTd>
+                            <MudTd DataLabel="Dernière sortie">@FormatDate(context.LastSeenDate)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+
+                    <MudText Typo="Typo.h6" Class="mt-4">Numéro chance</MudText>
+                    <MudTable Items="_lotoStats.BonusStats" Hover="true" Dense="true" Class="stats-table">
+                        <HeaderContent>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.Number))">
+                                    Numéro
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.Occurrences))">
+                                    Occurrences
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.FrequencyPct))">
+                                    Fréquence (%)
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>Histogramme</MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.LastSeenDate ?? DateOnly.MinValue))">
+                                    Dernière sortie
+                                </MudTableSortLabel>
+                            </MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Numéro">@context.Number</MudTd>
+                            <MudTd DataLabel="Occurrences">@context.Occurrences</MudTd>
+                            <MudTd DataLabel="Fréquence">@context.FrequencyPct.ToString("0.00")</MudTd>
+                            <MudTd DataLabel="Histogramme">
+                                <div class="mini-bar-track">
+                                    <div class="mini-bar-fill" style="@BuildBarWidth(context.FrequencyPct)"></div>
+                                </div>
+                            </MudTd>
+                            <MudTd DataLabel="Dernière sortie">@FormatDate(context.LastSeenDate)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="EuroMillions">
+            @if (_euroStats is null)
+            {
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            }
+            else
+            {
+                <MudPaper Elevation="0" Class="section-panel">
+                    <MudText Typo="Typo.subtitle1">Période: @FormatDate(_euroStats.PeriodStart) - @FormatDate(_euroStats.PeriodEnd)</MudText>
+                    <MudText Typo="Typo.caption">Total tirages analysés: @_euroStats.TotalDraws</MudText>
+
+                    <MudText Typo="Typo.h6" Class="mt-4">Numéros principaux</MudText>
+                    <MudTable Items="_euroStats.MainStats" Hover="true" Dense="true" Class="stats-table">
+                        <HeaderContent>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.Number))">
+                                    Numéro
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.Occurrences))">
+                                    Occurrences
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.FrequencyPct))">
+                                    Fréquence (%)
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>Histogramme</MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.LastSeenDate ?? DateOnly.MinValue))">
+                                    Dernière sortie
+                                </MudTableSortLabel>
+                            </MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Numéro">@context.Number</MudTd>
+                            <MudTd DataLabel="Occurrences">@context.Occurrences</MudTd>
+                            <MudTd DataLabel="Fréquence">@context.FrequencyPct.ToString("0.00")</MudTd>
+                            <MudTd DataLabel="Histogramme">
+                                <div class="mini-bar-track">
+                                    <div class="mini-bar-fill" style="@BuildBarWidth(context.FrequencyPct)"></div>
+                                </div>
+                            </MudTd>
+                            <MudTd DataLabel="Dernière sortie">@FormatDate(context.LastSeenDate)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+
+                    <MudText Typo="Typo.h6" Class="mt-4">Étoiles</MudText>
+                    <MudTable Items="_euroStats.BonusStats" Hover="true" Dense="true" Class="stats-table">
+                        <HeaderContent>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.Number))">
+                                    Numéro
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.Occurrences))">
+                                    Occurrences
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.FrequencyPct))">
+                                    Fréquence (%)
+                                </MudTableSortLabel>
+                            </MudTh>
+                            <MudTh>Histogramme</MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="ApiNumberStatResponse" SortBy="@(new Func<ApiNumberStatResponse, object>(item => item.LastSeenDate ?? DateOnly.MinValue))">
+                                    Dernière sortie
+                                </MudTableSortLabel>
+                            </MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Numéro">@context.Number</MudTd>
+                            <MudTd DataLabel="Occurrences">@context.Occurrences</MudTd>
+                            <MudTd DataLabel="Fréquence">@context.FrequencyPct.ToString("0.00")</MudTd>
+                            <MudTd DataLabel="Histogramme">
+                                <div class="mini-bar-track">
+                                    <div class="mini-bar-fill" style="@BuildBarWidth(context.FrequencyPct)"></div>
+                                </div>
+                            </MudTd>
+                            <MudTd DataLabel="Dernière sortie">@FormatDate(context.LastSeenDate)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            }
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    private ApiStatusResponse? _status;
+    private ApiGameStatsResponse? _lotoStats;
+    private ApiGameStatsResponse? _euroStats;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var statusTask = LotteryApiClient.GetStatusAsync(CancellationToken.None);
+            var lotoTask = LotteryApiClient.GetStatsAsync("Loto", CancellationToken.None);
+            var euroTask = LotteryApiClient.GetStatsAsync("EuroMillions", CancellationToken.None);
+
+            await Task.WhenAll(statusTask, lotoTask, euroTask);
+
+            _status = statusTask.Result;
+            _lotoStats = lotoTask.Result;
+            _euroStats = euroTask.Result;
+
+            if (_lotoStats is null || _euroStats is null)
+            {
+                _errorMessage = "Les statistiques ne sont pas disponibles temporairement.";
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Chargement des statistiques en echec.");
+            _errorMessage = "Erreur inattendue lors du chargement des statistiques.";
+        }
+    }
+
+    private static string FormatDate(DateOnly? value) => value?.ToString("dd/MM/yyyy") ?? "N/A";
+
+    private static string FormatDateTime(DateTimeOffset? value) =>
+        value is null || value.Value == DateTimeOffset.MinValue
+            ? "N/A"
+            : value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
+
+    private static string BuildBarWidth(double frequencyPct) =>
+        $"width:{Math.Clamp(frequencyPct, 0, 100):0.##}%";
+}

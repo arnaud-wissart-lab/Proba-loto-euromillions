@@ -2,12 +2,12 @@ namespace Web.Models;
 
 public sealed class ApiStatusResponse
 {
-    public DateTimeOffset DerniereMiseAJourUtc { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset LastSyncAt { get; init; } = DateTimeOffset.MinValue;
 
-    public int NbTiragesLoto { get; init; }
+    public ApiGameStatusResponse Loto { get; init; } = new();
 
-    public int NbTiragesEuroMillions { get; init; }
+    public ApiGameStatusResponse EuroMillions { get; init; } = new();
 
-    public string Avertissement { get; init; } =
-        "Aucune prédiction n'est proposée : données purement informatives.";
+    public string Disclaimer { get; init; } =
+        "Chaque combinaison reste equiprobable. Les contenus sont purement informatifs.";
 }

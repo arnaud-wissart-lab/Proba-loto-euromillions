@@ -1,6 +1,7 @@
 using Application.Abstractions;
 using Application.Models;
 using Domain.Enums;
+using Domain.Services;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,24 +16,43 @@ public sealed class StatusService(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var lotoCount = await dbContext.Draws.CountAsync(entity => entity.Game == LotteryGame.Loto, cancellationToken);
-        var euroCount = await dbContext.Draws.CountAsync(entity => entity.Game == LotteryGame.EuroMillions, cancellationToken);
+        var drawsByGame = await dbContext.Draws
+            .AsNoTracking()
+            .GroupBy(entity => entity.Game)
+            .Select(group => new
+            {
+                Game = group.Key,
+                DrawsCount = group.Count(),
+                LastDrawDate = group.Max(item => item.DrawDate)
+            })
+            .ToListAsync(cancellationToken);
+
+        var lotoData = drawsByGame.SingleOrDefault(item => item.Game == LotteryGame.Loto);
+        var euroData = drawsByGame.SingleOrDefault(item => item.Game == LotteryGame.EuroMillions);
+
         var lastSyncAtUtc = await dbContext.SyncStates
             .Select(entity => entity.LastSuccessfulSyncAtUtc)
             .MaxAsync(cancellationToken);
-        var effectiveLastSyncAtUtc = lastSyncAtUtc ?? DateTimeOffset.MinValue;
+        var effectiveLastSyncAt = lastSyncAtUtc ?? DateTimeOffset.MinValue;
+        var referenceDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
         logger.LogInformation(
-            "Statut calcule: date={LastUpdateUtc}, loto={LotoDrawCount}, euro={EuroMillionsDrawCount}",
-            effectiveLastSyncAtUtc,
-            lotoCount,
-            euroCount);
+            "Statut calcule: sync={LastSyncAt}, loto={LotoDrawCount}, euro={EuroDrawCount}",
+            effectiveLastSyncAt,
+            lotoData?.DrawsCount ?? 0,
+            euroData?.DrawsCount ?? 0);
 
         var status = new StatusDto(
-            effectiveLastSyncAtUtc,
-            lotoCount,
-            euroCount,
-            "Aucun système ne permet de prédire un tirage. Les données sont purement informatives.");
+            effectiveLastSyncAt,
+            new GameStatusDto(
+                lotoData?.DrawsCount ?? 0,
+                lotoData?.LastDrawDate,
+                LotteryGameRulesCatalog.GetNextDrawDate(LotteryGame.Loto, referenceDate)),
+            new GameStatusDto(
+                euroData?.DrawsCount ?? 0,
+                euroData?.LastDrawDate,
+                LotteryGameRulesCatalog.GetNextDrawDate(LotteryGame.EuroMillions, referenceDate)),
+            "Chaque combinaison reste equiprobable. Les statistiques de frequences et de recence sont purement informatives.");
 
         return status;
     }
