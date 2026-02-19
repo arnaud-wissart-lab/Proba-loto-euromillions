@@ -4,8 +4,8 @@ Application web vitrine en francais, informative et statistique, construite avec
 
 ## Objectifs
 - Fournir un socle pro/auditable: API, Web Blazor, Worker, architecture en couches.
-- Exposer des indicateurs de statut (placeholders) sur les tirages Loto et EuroMillions.
-- Preparer le terrain pour la synchronisation planifiee des tirages et les emails d'abonnement.
+- Exposer des indicateurs de statut (comptes reels des tirages + derniere synchro).
+- Synchroniser automatiquement les tirages FDJ (archives ZIP publiques) vers PostgreSQL.
 - Proposer un demarrage local via Docker Compose et via .NET Aspire.
 
 ## Avertissements importants
@@ -86,16 +86,25 @@ docker compose -f docker-compose.dev.yml up --build
 
 ## Configuration (variables d'environnement)
 - `ConnectionStrings__Postgres`
+- `Admin__ApiKey` (ou `ADMIN_API_KEY`)
 - `Api__BaseUrl`
 - `Smtp__Host`
 - `Smtp__Port`
 - `Smtp__UseStartTls`
 - `Smtp__Username`
 - `Smtp__Password`
-- `Jobs__SyncDraws__IntervalMinutes`
+- `Jobs__SyncDraws__Cron`
+- `Jobs__SyncDraws__TimeZoneId`
+- `Jobs__SyncDraws__RunOnStartup`
 - `Jobs__SendSubscriptions__IntervalMinutes`
 - `Jobs__SendSubscriptions__DryRun`
 - `Jobs__SendSubscriptions__TestRecipient`
+- `DrawSync__Loto__RuleStartDate`
+- `DrawSync__EuroMillions__RuleStartDate`
+- `DrawSync__Loto__HistoryUrl`
+- `DrawSync__EuroMillions__HistoryUrl`
+- `DrawSync__UserAgent`
+- `DrawSync__HttpTimeoutSeconds`
 
 ## Qualite et CI
 - Nullable active partout
@@ -110,3 +119,7 @@ dotnet restore
 dotnet build
 dotnet test
 ```
+
+## Endpoints API utiles
+- `GET /api/status` : nb tirages Loto/EuroMillions + derniere synchro reussie.
+- `POST /api/admin/sync` : declenche une synchro manuelle (header `X-Api-Key` requis).

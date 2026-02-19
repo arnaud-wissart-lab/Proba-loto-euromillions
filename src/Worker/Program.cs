@@ -1,4 +1,6 @@
 using Infrastructure;
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Serilog;
 using Worker.Email;
@@ -19,11 +21,13 @@ builder.Services.AddSerilog(
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
+builder.Services.Configure<SyncDrawsJobOptions>(builder.Configuration.GetSection(SyncDrawsJobOptions.SectionName));
 builder.Services.Configure<SendSubscriptionsJobOptions>(builder.Configuration.GetSection(SendSubscriptionsJobOptions.SectionName));
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
-var syncIntervalMinutes = builder.Configuration.GetValue<int?>("Jobs:SyncDraws:IntervalMinutes") ?? 30;
+var syncJobOptions = builder.Configuration.GetSection(SyncDrawsJobOptions.SectionName).Get<SyncDrawsJobOptions>() ?? new SyncDrawsJobOptions();
 var sendIntervalMinutes = builder.Configuration.GetValue<int?>("Jobs:SendSubscriptions:IntervalMinutes") ?? 60;
+var syncTimeZone = ResolveParisTimeZone(syncJobOptions.TimeZoneId);
 
 builder.Services.AddQuartz(quartz =>
 {
@@ -32,13 +36,24 @@ builder.Services.AddQuartz(quartz =>
 
     var syncJobKey = new JobKey(nameof(SyncDrawsJob));
     quartz.AddJob<SyncDrawsJob>(options => options.WithIdentity(syncJobKey));
-    quartz.AddTrigger(options => options
-        .ForJob(syncJobKey)
-        .WithIdentity($"{nameof(SyncDrawsJob)}-trigger")
-        .StartNow()
-        .WithSimpleSchedule(schedule => schedule
-            .WithInterval(TimeSpan.FromMinutes(syncIntervalMinutes))
-            .RepeatForever()));
+
+    quartz.AddTrigger(trigger =>
+    {
+        trigger.ForJob(syncJobKey)
+            .WithIdentity($"{nameof(SyncDrawsJob)}-cron-trigger")
+            .WithCronSchedule(
+                syncJobOptions.Cron,
+                cron => cron.InTimeZone(syncTimeZone));
+    });
+
+    if (syncJobOptions.RunOnStartup)
+    {
+        quartz.AddTrigger(trigger => trigger
+            .ForJob(syncJobKey)
+            .WithIdentity($"{nameof(SyncDrawsJob)}-startup-trigger")
+            .StartNow()
+            .WithSimpleSchedule(schedule => schedule.WithRepeatCount(0)));
+    }
 
     var sendJobKey = new JobKey(nameof(SendSubscriptionsJob));
     quartz.AddJob<SendSubscriptionsJob>(options => options.WithIdentity(sendJobKey));
@@ -57,4 +72,45 @@ builder.Services.AddQuartzHostedService(options =>
 });
 
 var host = builder.Build();
+
+await using (var scope = host.Services.CreateAsyncScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<LotteryDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
+
+var startupLogger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("WorkerStartup");
+startupLogger.LogInformation(
+    "Planification Quartz active pour {JobName}: cron={Cron}, timezone={TimeZoneId}, runOnStartup={RunOnStartup}",
+    nameof(SyncDrawsJob),
+    syncJobOptions.Cron,
+    syncTimeZone.Id,
+    syncJobOptions.RunOnStartup);
+
 host.Run();
+
+static TimeZoneInfo ResolveParisTimeZone(string configuredTimeZoneId)
+{
+    var candidates = new[]
+    {
+        configuredTimeZoneId,
+        "Europe/Paris",
+        "Romance Standard Time"
+    };
+
+    foreach (var candidate in candidates.Where(value => !string.IsNullOrWhiteSpace(value)))
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(candidate);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+        }
+        catch (InvalidTimeZoneException)
+        {
+        }
+    }
+
+    return TimeZoneInfo.Utc;
+}

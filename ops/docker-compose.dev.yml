@@ -37,9 +37,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
+      Admin__ApiKey: ${ADMIN_API_KEY:-dev-admin-key-change-me}
       Cors__AllowedOrigins__0: http://localhost:8080
-      StatusSeed__LotoDrawCount: 0
-      StatusSeed__EuroMillionsDrawCount: 0
     ports:
       - "8081:8080"
 

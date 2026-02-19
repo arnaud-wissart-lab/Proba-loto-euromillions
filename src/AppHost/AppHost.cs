@@ -11,6 +11,7 @@ var mailhog = builder.AddContainer("mailhog", "mailhog/mailhog", "v1.0.1")
 
 var api = builder.AddProject<Projects.Api>("api")
     .WithReference(database)
+    .WithEnvironment("Admin__ApiKey", "dev-admin-key-change-me")
     .WithHttpHealthCheck("/health")
     .WaitFor(database);
 

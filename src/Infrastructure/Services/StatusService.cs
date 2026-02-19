@@ -1,38 +1,39 @@
 using Application.Abstractions;
 using Application.Models;
-using Domain.Models;
-using Infrastructure.Options;
+using Domain.Enums;
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
 public sealed class StatusService(
-    IOptions<StatusSeedOptions> options,
+    LotteryDbContext dbContext,
     ILogger<StatusService> logger) : IStatusService
 {
-    public Task<StatusDto> GetStatusAsync(CancellationToken cancellationToken)
+    public async Task<StatusDto> GetStatusAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var seed = options.Value;
-        var statistics = new LotteryStatistics(
-            DateTimeOffset.UtcNow,
-            seed.LotoDrawCount,
-            seed.EuroMillionsDrawCount);
+        var lotoCount = await dbContext.Draws.CountAsync(entity => entity.Game == LotteryGame.Loto, cancellationToken);
+        var euroCount = await dbContext.Draws.CountAsync(entity => entity.Game == LotteryGame.EuroMillions, cancellationToken);
+        var lastSyncAtUtc = await dbContext.SyncStates
+            .Select(entity => entity.LastSuccessfulSyncAtUtc)
+            .MaxAsync(cancellationToken);
+        var effectiveLastSyncAtUtc = lastSyncAtUtc ?? DateTimeOffset.MinValue;
 
         logger.LogInformation(
             "Statut calcule: date={LastUpdateUtc}, loto={LotoDrawCount}, euro={EuroMillionsDrawCount}",
-            statistics.LastUpdateUtc,
-            statistics.LotoDrawCount,
-            statistics.EuroMillionsDrawCount);
+            effectiveLastSyncAtUtc,
+            lotoCount,
+            euroCount);
 
         var status = new StatusDto(
-            statistics.LastUpdateUtc,
-            statistics.LotoDrawCount,
-            statistics.EuroMillionsDrawCount,
-            "Aucun systeme ne permet de predire un tirage. Les donnees sont purement informatives.");
+            effectiveLastSyncAtUtc,
+            lotoCount,
+            euroCount,
+            "Aucun système ne permet de prédire un tirage. Les données sont purement informatives.");
 
-        return Task.FromResult(status);
+        return status;
     }
 }

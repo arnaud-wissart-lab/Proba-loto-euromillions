@@ -3,28 +3,28 @@
 @inject StatusApiClient StatusApiClient
 @inject ILogger<Home> Logger
 
-<PageTitle>Probabilites Loto & EuroMillions</PageTitle>
+<PageTitle>Probabilités Loto & EuroMillions</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="landing-container">
     <MudPaper Elevation="2" Class="hero-panel">
-        <MudText Typo="Typo.h3" GutterBottom="true">Probabilites Loto &amp; EuroMillions</MudText>
+        <MudText Typo="Typo.h3" GutterBottom="true">Probabilités Loto &amp; EuroMillions</MudText>
         <MudText Typo="Typo.subtitle1">
-            Plateforme statistique informative pour consulter l'etat des donnees de tirages.
+            Plateforme statistique informative pour consulter l'état des données de tirages.
         </MudText>
         <MudStack Row="true" Spacing="1" Class="mt-3">
             <MudPaper Class="tag-pill tag-pill-info" Elevation="0">
-                <MudText Typo="Typo.caption">Non affilie a FDJ</MudText>
+                <MudText Typo="Typo.caption">Non affilié à FDJ</MudText>
             </MudPaper>
             <MudPaper Class="tag-pill tag-pill-warning" Elevation="0">
                 <MudText Typo="Typo.caption">Jeu responsable</MudText>
             </MudPaper>
         </MudStack>
         <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-4">
-            Les jeux d'argent comportent des risques: endettement, isolement, dependance.
-            Fixez vos limites et jouez avec moderation.
+            Les jeux d'argent comportent des risques : endettement, isolement, dépendance.
+            Fixez vos limites et jouez avec modération.
         </MudAlert>
         <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
-            Ce site ne predit aucun tirage. Les contenus sont purement informatifs et statistiques.
+            Ce site ne prédit aucun tirage. Les contenus sont purement informatifs et statistiques.
         </MudAlert>
     </MudPaper>
 
@@ -38,7 +38,7 @@
     <MudGrid Class="mt-4">
         <MudItem xs="12" md="4">
             <MudPaper Class="kpi-card" Elevation="1">
-                <MudText Typo="Typo.overline">Derniere mise a jour</MudText>
+                <MudText Typo="Typo.overline">Dernière mise à jour</MudText>
                 <MudText Typo="Typo.h6">@FormatDate(_status.DerniereMiseAJourUtc)</MudText>
             </MudPaper>
         </MudItem>
@@ -75,7 +75,7 @@
         }
 
         Logger.LogWarning("Chargement du statut en mode placeholder.");
-        _messageErreur = "API indisponible temporairement. Les valeurs affichees sont des placeholders.";
+        _messageErreur = "API indisponible temporairement. Les valeurs affichées sont des valeurs de secours.";
     }
 
     private static string FormatDate(DateTimeOffset value)

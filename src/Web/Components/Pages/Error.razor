@@ -5,13 +5,13 @@
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="pt-8">
     <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
-        Une erreur est survenue pendant le traitement de la requete.
+        Une erreur est survenue pendant le traitement de la requête.
     </MudAlert>
 
     @if (ShowRequestId)
     {
         <MudText Typo="Typo.caption" Class="mt-2">
-            Identifiant de requete: <code>@RequestId</code>
+            Identifiant de requête : <code>@RequestId</code>
         </MudText>
     }
 </MudContainer>

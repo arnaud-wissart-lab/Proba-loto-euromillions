@@ -9,5 +9,5 @@ public sealed class ApiStatusResponse
     public int NbTiragesEuroMillions { get; init; }
 
     public string Avertissement { get; init; } =
-        "Aucune prediction n'est proposee: donnees purement informatives.";
+        "Aucune prédiction n'est proposée : données purement informatives.";
 }
