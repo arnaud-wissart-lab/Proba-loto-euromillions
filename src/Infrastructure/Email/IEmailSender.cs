@@ -1,4 +1,4 @@
-namespace Worker.Email;
+namespace Infrastructure.Email;
 
 public interface IEmailSender
 {

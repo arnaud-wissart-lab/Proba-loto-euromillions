@@ -4,7 +4,9 @@ public sealed class SendSubscriptionsJobOptions
 {
     public const string SectionName = "Jobs:SendSubscriptions";
 
-    public bool DryRun { get; init; } = true;
+    public string Cron { get; init; } = "0 0 18 * * ?";
 
-    public string? TestRecipient { get; init; }
+    public string TimeZoneId { get; init; } = "Europe/Paris";
+
+    public bool RunOnStartup { get; init; }
 }

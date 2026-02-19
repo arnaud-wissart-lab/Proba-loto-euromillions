@@ -70,6 +70,38 @@ public sealed class ApiEndpointsTests : IClassFixture<ApiEndpointsTests.ApiTestF
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PostSubscriptionShouldReturnAccepted()
+    {
+        var request = new CreateSubscriptionRequestDto("demo@example.local", "Loto", 5, "uniform");
+
+        var response = await _client.PostAsJsonAsync("/api/subscriptions", request);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetConfirmShouldReturnPayload()
+    {
+        var response = await _client.GetAsync("/api/subscriptions/confirm?token=ok");
+        var payload = await response.Content.ReadFromJsonAsync<SubscriptionActionResultDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.True(payload.Success);
+    }
+
+    [Fact]
+    public async Task GetUnsubscribeShouldReturnPayload()
+    {
+        var response = await _client.GetAsync("/api/subscriptions/unsubscribe?token=ok");
+        var payload = await response.Content.ReadFromJsonAsync<SubscriptionActionResultDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.True(payload.Success);
+    }
+
     public sealed class ApiTestFactory : WebApplicationFactory<Program>
     {
         public ApiTestFactory()
@@ -91,10 +123,12 @@ public sealed class ApiEndpointsTests : IClassFixture<ApiEndpointsTests.ApiTestF
                 services.RemoveAll<IStatusService>();
                 services.RemoveAll<IStatisticsService>();
                 services.RemoveAll<IGridGenerationService>();
+                services.RemoveAll<ISubscriptionService>();
 
                 services.AddSingleton<IStatusService, FakeStatusService>();
                 services.AddSingleton<IStatisticsService, FakeStatisticsService>();
                 services.AddSingleton<IGridGenerationService, FakeGridGenerationService>();
+                services.AddSingleton<ISubscriptionService, FakeSubscriptionService>();
             });
         }
 
@@ -175,5 +209,43 @@ public sealed class ApiEndpointsTests : IClassFixture<ApiEndpointsTests.ApiTestF
 
             return Task.FromResult(payload);
         }
+    }
+
+    private sealed class FakeSubscriptionService : ISubscriptionService
+    {
+        public Task RequestSubscriptionAsync(CreateSubscriptionRequestDto request, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task<SubscriptionActionResultDto> ConfirmAsync(string token, CancellationToken cancellationToken)
+        {
+            var success = token == "ok";
+            return Task.FromResult(new SubscriptionActionResultDto(success, success ? "Abonnement confirme." : "Lien invalide."));
+        }
+
+        public Task<SubscriptionActionResultDto> UnsubscribeAsync(string token, CancellationToken cancellationToken)
+        {
+            var success = token == "ok";
+            return Task.FromResult(new SubscriptionActionResultDto(success, success ? "Desinscription effectuee." : "Lien invalide."));
+        }
+
+        public Task<SubscriptionStatusDto> GetStatusByEmailAsync(string email, CancellationToken cancellationToken)
+        {
+            var payload = new SubscriptionStatusDto(
+                email,
+                [
+                    new SubscriptionStatusItemDto(
+                        "Loto",
+                        5,
+                        "uniform",
+                        "Active",
+                        DateTimeOffset.UtcNow.AddDays(-2),
+                        DateTimeOffset.UtcNow.AddDays(-1),
+                        null)
+                ]);
+
+            return Task.FromResult(payload);
+        }
+
+        public Task DeleteDataByEmailAsync(string email, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

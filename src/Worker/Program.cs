@@ -3,7 +3,6 @@ using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Serilog;
-using Worker.Email;
 using Worker.Jobs;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -20,14 +19,13 @@ builder.Services.AddSerilog(
             .WriteTo.Console());
 
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.SectionName));
 builder.Services.Configure<SyncDrawsJobOptions>(builder.Configuration.GetSection(SyncDrawsJobOptions.SectionName));
 builder.Services.Configure<SendSubscriptionsJobOptions>(builder.Configuration.GetSection(SendSubscriptionsJobOptions.SectionName));
-builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
 var syncJobOptions = builder.Configuration.GetSection(SyncDrawsJobOptions.SectionName).Get<SyncDrawsJobOptions>() ?? new SyncDrawsJobOptions();
-var sendIntervalMinutes = builder.Configuration.GetValue<int?>("Jobs:SendSubscriptions:IntervalMinutes") ?? 60;
+var sendJobOptions = builder.Configuration.GetSection(SendSubscriptionsJobOptions.SectionName).Get<SendSubscriptionsJobOptions>() ?? new SendSubscriptionsJobOptions();
 var syncTimeZone = ResolveParisTimeZone(syncJobOptions.TimeZoneId);
+var sendTimeZone = ResolveParisTimeZone(sendJobOptions.TimeZoneId);
 
 builder.Services.AddQuartz(quartz =>
 {
@@ -57,13 +55,23 @@ builder.Services.AddQuartz(quartz =>
 
     var sendJobKey = new JobKey(nameof(SendSubscriptionsJob));
     quartz.AddJob<SendSubscriptionsJob>(options => options.WithIdentity(sendJobKey));
-    quartz.AddTrigger(options => options
-        .ForJob(sendJobKey)
-        .WithIdentity($"{nameof(SendSubscriptionsJob)}-trigger")
-        .StartNow()
-        .WithSimpleSchedule(schedule => schedule
-            .WithInterval(TimeSpan.FromMinutes(sendIntervalMinutes))
-            .RepeatForever()));
+    quartz.AddTrigger(trigger =>
+    {
+        trigger.ForJob(sendJobKey)
+            .WithIdentity($"{nameof(SendSubscriptionsJob)}-cron-trigger")
+            .WithCronSchedule(
+                sendJobOptions.Cron,
+                cron => cron.InTimeZone(sendTimeZone));
+    });
+
+    if (sendJobOptions.RunOnStartup)
+    {
+        quartz.AddTrigger(trigger => trigger
+            .ForJob(sendJobKey)
+            .WithIdentity($"{nameof(SendSubscriptionsJob)}-startup-trigger")
+            .StartNow()
+            .WithSimpleSchedule(schedule => schedule.WithRepeatCount(0)));
+    }
 });
 
 builder.Services.AddQuartzHostedService(options =>
@@ -86,6 +94,12 @@ startupLogger.LogInformation(
     syncJobOptions.Cron,
     syncTimeZone.Id,
     syncJobOptions.RunOnStartup);
+startupLogger.LogInformation(
+    "Planification Quartz active pour {JobName}: cron={Cron}, timezone={TimeZoneId}, runOnStartup={RunOnStartup}",
+    nameof(SendSubscriptionsJob),
+    sendJobOptions.Cron,
+    sendTimeZone.Id,
+    sendJobOptions.RunOnStartup);
 
 host.Run();
 

@@ -1,0 +1,129 @@
+@page "/abonnement"
+@rendermode InteractiveServer
+@inject LotteryApiClient LotteryApiClient
+@inject ILogger<Subscription> Logger
+
+<PageTitle>Abonnement</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="page-container">
+    <MudPaper Elevation="1" Class="section-panel">
+        <MudText Typo="Typo.h4" GutterBottom="true">Abonnement email</MudText>
+        <MudText Typo="Typo.body2">
+            Recevez la veille de chaque tirage vos grilles calculées (double opt-in).
+        </MudText>
+
+        <MudGrid Class="mt-4">
+            <MudItem xs="12">
+                <MudTextField Label="Email"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              @bind-Value="_email" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect T="string" Label="Jeu" Variant="Variant.Outlined" @bind-Value="_game">
+                    <MudSelectItem T="string" Value="@("Loto")">Loto</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("EuroMillions")">EuroMillions</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudNumericField T="int"
+                                 Label="Nombre de grilles"
+                                 Variant="Variant.Outlined"
+                                 Min="1"
+                                 Max="100"
+                                 Immediate="true"
+                                 @bind-Value="_gridCount" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect T="string" Label="Stratégie" Variant="Variant.Outlined" @bind-Value="_strategy">
+                    <MudSelectItem T="string" Value="@("uniform")">A) Aléatoire (uniforme)</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("frequency")">B) Pondéré par fréquence</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("recency")">C) Pondéré par récence</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="_isSubmitting"
+                   OnClick="@SubmitAsync"
+                   Class="mt-3">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            S'abonner
+        </MudButton>
+    </MudPaper>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-4">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @if (_submitted)
+    {
+        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+            Si l'adresse fournie est valide, un email de confirmation vous a été envoyé.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private string _email = string.Empty;
+    private string _game = "Loto";
+    private int _gridCount = 5;
+    private string _strategy = "uniform";
+    private bool _isSubmitting;
+    private bool _submitted;
+    private string? _errorMessage;
+
+    private async Task SubmitAsync()
+    {
+        _errorMessage = null;
+        _submitted = false;
+
+        if (!IsValidEmail(_email))
+        {
+            _errorMessage = "Veuillez saisir une adresse email valide.";
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var success = await LotteryApiClient.RequestSubscriptionAsync(
+                new ApiCreateSubscriptionRequest
+                {
+                    Email = _email,
+                    Game = _game,
+                    GridCount = Math.Clamp(_gridCount, 1, 100),
+                    Strategy = _strategy
+                },
+                CancellationToken.None);
+
+            if (!success)
+            {
+                _errorMessage = "L'abonnement n'a pas pu etre enregistre. Reessayez plus tard.";
+                return;
+            }
+
+            _submitted = true;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Erreur lors de la demande d'abonnement.");
+            _errorMessage = "Erreur inattendue lors de l'abonnement.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private static bool IsValidEmail(string email) =>
+        !string.IsNullOrWhiteSpace(email) && System.Net.Mail.MailAddress.TryCreate(email.Trim(), out _);
+}

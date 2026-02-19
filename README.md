@@ -15,8 +15,10 @@ Application web vitrine en francais, informative et statistique, construite avec
 - Non affilie a FDJ.
 
 ## RGPD (etat actuel du socle)
-- Les emails d'abonnement sont prevus uniquement pour le service de notification.
-- Un mecanisme de desinscription par lien unique est prevu dans le modele de donnees.
+- Donnees minimales stockees: email + parametres d'abonnement.
+- Double opt-in: un abonnement reste `Pending` tant que le lien de confirmation n'est pas clique.
+- Lien de desinscription 1 clic inclus dans chaque email.
+- Endpoint de suppression des donnees par email disponible (`DELETE /api/subscriptions/data`).
 - Aucune reutilisation marketing des emails n'est incluse dans ce socle.
 
 ## Stack technique
@@ -88,17 +90,20 @@ docker compose -f docker-compose.dev.yml up --build
 - `ConnectionStrings__Postgres`
 - `Admin__ApiKey` (ou `ADMIN_API_KEY`)
 - `Api__BaseUrl`
-- `Smtp__Host`
-- `Smtp__Port`
+- `SMTP_HOST` (ou `Smtp__Host`)
+- `SMTP_PORT` (ou `Smtp__Port`)
+- `SMTP_USER` (ou `Smtp__Username`)
+- `SMTP_PASS` (ou `Smtp__Password`)
+- `SMTP_FROM` (email expediteur, ex `No Reply <no-reply@example.local>`)
+- `PUBLIC_BASE_URL` (base publique des liens emails)
+- `SUBSCRIPTIONS_TOKEN_SECRET` (secret de signature des tokens)
 - `Smtp__UseStartTls`
-- `Smtp__Username`
-- `Smtp__Password`
 - `Jobs__SyncDraws__Cron`
 - `Jobs__SyncDraws__TimeZoneId`
 - `Jobs__SyncDraws__RunOnStartup`
-- `Jobs__SendSubscriptions__IntervalMinutes`
-- `Jobs__SendSubscriptions__DryRun`
-- `Jobs__SendSubscriptions__TestRecipient`
+- `Jobs__SendSubscriptions__Cron`
+- `Jobs__SendSubscriptions__TimeZoneId`
+- `Jobs__SendSubscriptions__RunOnStartup`
 - `DrawSync__Loto__RuleStartDate`
 - `DrawSync__EuroMillions__RuleStartDate`
 - `DrawSync__Loto__HistoryUrl`
@@ -125,3 +130,8 @@ dotnet test
 - `GET /api/stats/{game}` : frequences par numero (main/bonus), derniere sortie, periode analysee.
 - `POST /api/grids/generate` : generation de 1 a 100 grilles uniques (`uniform`, `frequency`, `recency`) avec score explicable.
 - `POST /api/admin/sync` : declenche une synchro manuelle (header `X-Api-Key` requis).
+- `POST /api/subscriptions` : creation `Pending` + envoi email de confirmation.
+- `GET /api/subscriptions/confirm?token=...` : activation de l'abonnement.
+- `GET /api/subscriptions/unsubscribe?token=...` : desinscription.
+- `GET /api/subscriptions/status?email=...` : consultation des abonnements d'un email.
+- `DELETE /api/subscriptions/data?email=...` : suppression des donnees d'abonnement (RGPD minimal).

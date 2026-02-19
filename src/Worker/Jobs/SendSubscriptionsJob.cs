@@ -1,11 +1,11 @@
 using Quartz;
+using Application.Abstractions;
 using Microsoft.Extensions.Options;
-using Worker.Email;
 
 namespace Worker.Jobs;
 
 public sealed class SendSubscriptionsJob(
-    IEmailSender emailSender,
+    ISubscriptionDispatchService subscriptionDispatchService,
     IOptions<SendSubscriptionsJobOptions> options,
     ILogger<SendSubscriptionsJob> logger) : IJob
 {
@@ -14,24 +14,21 @@ public sealed class SendSubscriptionsJob(
         var currentOptions = options.Value;
 
         logger.LogInformation(
-            "Execution de {JobName} a {ExecutionTimeUtc} (dryRun={DryRun})",
+            "Execution de {JobName} a {ExecutionTimeUtc} (cron={Cron}, timezone={TimeZone})",
             nameof(SendSubscriptionsJob),
             DateTimeOffset.UtcNow,
-            currentOptions.DryRun);
+            currentOptions.Cron,
+            currentOptions.TimeZoneId);
 
-        if (currentOptions.DryRun || string.IsNullOrWhiteSpace(currentOptions.TestRecipient))
-        {
-            logger.LogInformation(
-                "Mode simulation actif pour {JobName}: aucun email envoye.",
-                nameof(SendSubscriptionsJob));
-            return;
-        }
+        var summary = await subscriptionDispatchService.SendForUpcomingDrawsAsync(DateTimeOffset.UtcNow, context.CancellationToken);
 
-        await emailSender.SendAsync(
-            new EmailMessage(
-                currentOptions.TestRecipient,
-                "Simulation d'abonnement",
-                "Ceci est un email de test. Le service est informatif et ne predit aucun tirage."),
-            context.CancellationToken);
+        logger.LogInformation(
+            "{JobName} termine: active={ActiveCount}, sent={SentCount}, failed={FailedCount}, skipped={SkippedCount}, referenceDate={ReferenceDate}",
+            nameof(SendSubscriptionsJob),
+            summary.ActiveSubscriptions,
+            summary.SentCount,
+            summary.FailedCount,
+            summary.SkippedCount,
+            summary.ReferenceDate);
     }
 }

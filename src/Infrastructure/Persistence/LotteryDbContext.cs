@@ -9,12 +9,16 @@ public sealed class LotteryDbContext(DbContextOptions<LotteryDbContext> options)
 
     public DbSet<SubscriptionEntity> Subscriptions => Set<SubscriptionEntity>();
 
+    public DbSet<EmailSendLogEntity> EmailSendLogs => Set<EmailSendLogEntity>();
+
     public DbSet<SyncRunEntity> SyncRuns => Set<SyncRunEntity>();
 
     public DbSet<SyncStateEntity> SyncStates => Set<SyncStateEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasPostgresExtension("citext");
+
         var draw = modelBuilder.Entity<DrawEntity>();
         draw.ToTable("draws");
         draw.HasKey(entity => entity.Id);
@@ -30,11 +34,34 @@ public sealed class LotteryDbContext(DbContextOptions<LotteryDbContext> options)
         var subscription = modelBuilder.Entity<SubscriptionEntity>();
         subscription.ToTable("subscriptions");
         subscription.HasKey(entity => entity.Id);
-        subscription.Property(entity => entity.Email).IsRequired().HasMaxLength(320);
-        subscription.Property(entity => entity.UnsubscribeToken).IsRequired().HasMaxLength(128);
-        subscription.Property(entity => entity.CreatedAtUtc).HasColumnType("timestamp with time zone");
-        subscription.HasIndex(entity => entity.Email).IsUnique();
-        subscription.HasIndex(entity => entity.UnsubscribeToken).IsUnique();
+        subscription.Property(entity => entity.Email).IsRequired().HasColumnType("citext").HasMaxLength(320);
+        subscription.Property(entity => entity.Game).HasConversion<string>().HasMaxLength(32);
+        subscription.Property(entity => entity.GridCount).HasDefaultValue(5);
+        subscription.Property(entity => entity.Strategy).HasConversion<string>().HasMaxLength(24);
+        subscription.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(24);
+        subscription.Property(entity => entity.CreatedAt).HasColumnType("timestamp with time zone");
+        subscription.Property(entity => entity.ConfirmedAt).HasColumnType("timestamp with time zone");
+        subscription.Property(entity => entity.UnsubscribedAt).HasColumnType("timestamp with time zone");
+        subscription.Property(entity => entity.ConfirmTokenHash).IsRequired().HasMaxLength(128);
+        subscription.Property(entity => entity.UnsubTokenHash).IsRequired().HasMaxLength(128);
+        subscription.Property(entity => entity.LastSentForDrawDate).HasColumnType("date");
+        subscription.HasIndex(entity => entity.Email);
+        subscription.HasIndex(entity => new { entity.Email, entity.Game, entity.Status });
+        subscription.HasIndex(entity => entity.ConfirmTokenHash).IsUnique();
+        subscription.HasIndex(entity => entity.UnsubTokenHash).IsUnique();
+
+        var emailSendLog = modelBuilder.Entity<EmailSendLogEntity>();
+        emailSendLog.ToTable("email_send_logs");
+        emailSendLog.HasKey(entity => entity.Id);
+        emailSendLog.Property(entity => entity.IntendedDrawDate).HasColumnType("date");
+        emailSendLog.Property(entity => entity.SentAt).HasColumnType("timestamp with time zone");
+        emailSendLog.Property(entity => entity.Status).HasConversion<string>().HasMaxLength(16);
+        emailSendLog.Property(entity => entity.Error).HasColumnType("text");
+        emailSendLog.HasIndex(entity => new { entity.SubscriptionId, entity.IntendedDrawDate });
+        emailSendLog.HasOne(entity => entity.Subscription)
+            .WithMany(subscriptionEntity => subscriptionEntity.EmailSendLogs)
+            .HasForeignKey(entity => entity.SubscriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         var syncRun = modelBuilder.Entity<SyncRunEntity>();
         syncRun.ToTable("sync_runs");

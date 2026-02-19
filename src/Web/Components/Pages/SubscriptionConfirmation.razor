@@ -1,0 +1,76 @@
+@page "/abonnement/confirmation"
+@rendermode InteractiveServer
+@inject LotteryApiClient LotteryApiClient
+@inject ILogger<SubscriptionConfirmation> Logger
+
+<PageTitle>Confirmation abonnement</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="page-container">
+    <MudPaper Elevation="1" Class="section-panel">
+        <MudText Typo="Typo.h4" GutterBottom="true">Confirmation</MudText>
+
+        @if (_isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true">
+                @_errorMessage
+            </MudAlert>
+        }
+        else if (_result is not null)
+        {
+            <MudAlert Severity="@(_result.Success ? Severity.Success : Severity.Warning)" Variant="Variant.Outlined" Dense="true">
+                @_result.Message
+            </MudAlert>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")]
+    private string? Token { get; set; }
+
+    private bool _isLoading;
+    private string? _lastToken;
+    private string? _errorMessage;
+    private ApiSubscriptionActionResponse? _result;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.Equals(_lastToken, Token, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _lastToken = Token;
+        _errorMessage = null;
+        _result = null;
+
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _errorMessage = "Lien invalide: token manquant.";
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            _result = await LotteryApiClient.ConfirmSubscriptionAsync(Token, CancellationToken.None);
+            if (_result is null)
+            {
+                _errorMessage = "La confirmation est indisponible temporairement.";
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Erreur de confirmation abonnement.");
+            _errorMessage = "Erreur inattendue pendant la confirmation.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

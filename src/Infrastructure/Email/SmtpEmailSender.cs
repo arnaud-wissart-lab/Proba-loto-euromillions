@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
-namespace Worker.Email;
+namespace Infrastructure.Email;
 
 public sealed class SmtpEmailSender(
     IOptions<SmtpOptions> options,
@@ -13,6 +13,7 @@ public sealed class SmtpEmailSender(
     public async Task SendAsync(EmailMessage email, CancellationToken cancellationToken)
     {
         var smtpOptions = options.Value;
+        var message = BuildMessage(email, smtpOptions);
 
         using var client = new SmtpClient();
         await client.ConnectAsync(
@@ -26,18 +27,26 @@ public sealed class SmtpEmailSender(
             await client.AuthenticateAsync(smtpOptions.Username, smtpOptions.Password, cancellationToken);
         }
 
-        var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(smtpOptions.SenderName, smtpOptions.SenderAddress));
-        message.To.Add(MailboxAddress.Parse(email.To));
-        message.Subject = email.Subject;
-        message.Body = new TextPart("plain")
-        {
-            Text = email.Body
-        };
-
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
 
-        logger.LogInformation("Email envoye a {Recipient} via {SmtpHost}:{SmtpPort}", email.To, smtpOptions.Host, smtpOptions.Port);
+        logger.LogInformation("Email envoye via {SmtpHost}:{SmtpPort}", smtpOptions.Host, smtpOptions.Port);
+    }
+
+    private static MimeMessage BuildMessage(EmailMessage email, SmtpOptions options)
+    {
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(options.SenderName, options.SenderAddress));
+        message.To.Add(MailboxAddress.Parse(email.To));
+        message.Subject = email.Subject;
+
+        var builder = new BodyBuilder
+        {
+            TextBody = email.TextBody,
+            HtmlBody = email.HtmlBody
+        };
+
+        message.Body = builder.ToMessageBody();
+        return message;
     }
 }

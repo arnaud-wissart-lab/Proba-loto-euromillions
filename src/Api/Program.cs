@@ -5,10 +5,12 @@ using Domain.Services;
 using Infrastructure;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +27,21 @@ builder.Host.UseSerilog(
     writeToProviders: true);
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    var permitLimit = builder.Configuration.GetValue<int?>("RateLimiting:SubscriptionsPost:PermitLimit") ?? 10;
+    var windowSeconds = builder.Configuration.GetValue<int?>("RateLimiting:SubscriptionsPost:WindowSeconds") ?? 60;
+
+    options.AddFixedWindowLimiter("subscriptions-post", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = permitLimit;
+        limiterOptions.Window = TimeSpan.FromSeconds(windowSeconds);
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -74,6 +91,7 @@ if (autoMigrate)
 }
 
 app.UseSerilogRequestLogging();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
@@ -140,6 +158,92 @@ app.MapPost(
     .WithSummary("Genere des grilles uniques (uniforme, frequence, recence) avec score explicable.")
     .Accepts<GenerateGridsRequestDto>("application/json")
     .Produces<GenerateGridsResponseDto>(StatusCodes.Status200OK)
+    .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+app.MapPost(
+        "/api/subscriptions",
+        async (CreateSubscriptionRequestDto request, ISubscriptionService subscriptionService, CancellationToken cancellationToken) =>
+        {
+            var errors = ValidateSubscriptionRequest(request);
+            if (errors.Count > 0)
+            {
+                return Results.ValidationProblem(errors);
+            }
+
+            await subscriptionService.RequestSubscriptionAsync(request, cancellationToken);
+            return Results.Accepted(value: new
+            {
+                message = "Si l'adresse fournie est valide, un email de confirmation a ete envoye."
+            });
+        })
+    .RequireRateLimiting("subscriptions-post")
+    .WithName("PostSubscription")
+    .WithTags("Abonnements")
+    .WithSummary("Cree un abonnement en statut Pending et envoie un email de confirmation.")
+    .Accepts<CreateSubscriptionRequestDto>("application/json")
+    .Produces(StatusCodes.Status202Accepted)
+    .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+app.MapGet(
+        "/api/subscriptions/confirm",
+        async (string token, ISubscriptionService subscriptionService, CancellationToken cancellationToken) =>
+            Results.Ok(await subscriptionService.ConfirmAsync(token, cancellationToken)))
+    .WithName("GetSubscriptionConfirm")
+    .WithTags("Abonnements")
+    .WithSummary("Confirme un abonnement via token.")
+    .Produces<SubscriptionActionResultDto>(StatusCodes.Status200OK);
+
+app.MapGet(
+        "/api/subscriptions/unsubscribe",
+        async (string token, ISubscriptionService subscriptionService, CancellationToken cancellationToken) =>
+            Results.Ok(await subscriptionService.UnsubscribeAsync(token, cancellationToken)))
+    .WithName("GetSubscriptionUnsubscribe")
+    .WithTags("Abonnements")
+    .WithSummary("Desinscrit un abonnement via token.")
+    .Produces<SubscriptionActionResultDto>(StatusCodes.Status200OK);
+
+app.MapGet(
+        "/api/subscriptions/status",
+        async (string email, ISubscriptionService subscriptionService, CancellationToken cancellationToken) =>
+        {
+            if (!IsValidEmail(email))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["email"] = ["Adresse email invalide."]
+                });
+            }
+
+            return Results.Ok(await subscriptionService.GetStatusByEmailAsync(email, cancellationToken));
+        })
+    .WithName("GetSubscriptionStatus")
+    .WithTags("Abonnements")
+    .WithSummary("Retourne le statut des abonnements connus pour un email.")
+    .Produces<SubscriptionStatusDto>(StatusCodes.Status200OK)
+    .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+app.MapDelete(
+        "/api/subscriptions/data",
+        async (string email, ISubscriptionService subscriptionService, CancellationToken cancellationToken) =>
+        {
+            if (!IsValidEmail(email))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["email"] = ["Adresse email invalide."]
+                });
+            }
+
+            await subscriptionService.DeleteDataByEmailAsync(email, cancellationToken);
+            return Results.Accepted(value: new
+            {
+                message = "Si des donnees existent pour cet email, elles ont ete supprimees."
+            });
+        })
+    .WithName("DeleteSubscriptionData")
+    .WithTags("Abonnements")
+    .WithSummary("Suppression RGPD des donnees d'abonnement pour un email.")
+    .Produces(StatusCodes.Status202Accepted)
     .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
 app.MapPost(
@@ -223,5 +327,35 @@ static Dictionary<string, string[]> ValidateGenerateRequest(
 
     return errors;
 }
+
+static Dictionary<string, string[]> ValidateSubscriptionRequest(CreateSubscriptionRequestDto request)
+{
+    var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+    if (!IsValidEmail(request.Email))
+    {
+        errors["email"] = ["Adresse email invalide."];
+    }
+
+    if (!LotteryGameRulesCatalog.TryParseGame(request.Game, out _))
+    {
+        errors["game"] = ["Valeur invalide. Valeurs supportees: Loto, EuroMillions."];
+    }
+
+    if (request.GridCount is < 1 or > 100)
+    {
+        errors["gridCount"] = ["La valeur doit etre comprise entre 1 et 100."];
+    }
+
+    if (!GridGenerationStrategyExtensions.TryParseStrategy(request.Strategy, out _))
+    {
+        errors["strategy"] = ["Valeur invalide. Valeurs supportees: uniform, frequency, recency."];
+    }
+
+    return errors;
+}
+
+static bool IsValidEmail(string rawEmail) =>
+    !string.IsNullOrWhiteSpace(rawEmail) && System.Net.Mail.MailAddress.TryCreate(rawEmail.Trim(), out _);
 
 public partial class Program;
