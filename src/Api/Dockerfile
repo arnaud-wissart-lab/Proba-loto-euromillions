@@ -1,0 +1,24 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY ["global.json", "."]
+COPY ["Directory.Build.props", "."]
+COPY [".editorconfig", "."]
+COPY ["src/Directory.Build.props", "src/"]
+COPY ["src/Api/Api.csproj", "src/Api/"]
+COPY ["src/Application/Application.csproj", "src/Application/"]
+COPY ["src/Domain/Domain.csproj", "src/Domain/"]
+COPY ["src/Infrastructure/Infrastructure.csproj", "src/Infrastructure/"]
+COPY ["src/ServiceDefaults/ServiceDefaults.csproj", "src/ServiceDefaults/"]
+RUN dotnet restore "src/Api/Api.csproj"
+
+COPY . .
+RUN dotnet publish "src/Api/Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "Api.dll"]

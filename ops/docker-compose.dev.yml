@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: probabilites-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: probabilites_loto
+      POSTGRES_USER: ${POSTGRES_USER:-probaloto}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-probaloto} -d probabilites_loto" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: probabilites-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    container_name: probabilites-api
+    build:
+      context: ..
+      dockerfile: src/Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
+      Cors__AllowedOrigins__0: http://localhost:8080
+      StatusSeed__LotoDrawCount: 0
+      StatusSeed__EuroMillionsDrawCount: 0
+    ports:
+      - "8081:8080"
+
+  worker:
+    container_name: probabilites-worker
+    build:
+      context: ..
+      dockerfile: src/Worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
+      Smtp__Host: mailhog
+      Smtp__Port: 1025
+      Smtp__UseStartTls: false
+      Jobs__SendSubscriptions__DryRun: true
+      Jobs__SendSubscriptions__TestRecipient: demo@example.local
+
+  web:
+    container_name: probabilites-web
+    build:
+      context: ..
+      dockerfile: src/Web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Api__BaseUrl: http://api:8080
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:

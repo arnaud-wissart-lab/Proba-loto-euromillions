@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="0" Dense="true" Class="main-appbar">
+        <MudText Typo="Typo.h6">Probabilites Loto &amp; EuroMillions</MudText>
+        <MudSpacer />
+        <MudText Typo="Typo.caption">Statistiques informatives</MudText>
+    </MudAppBar>
+
+    <MudMainContent Class="main-content">
+        @Body
+    </MudMainContent>
+</MudLayout>

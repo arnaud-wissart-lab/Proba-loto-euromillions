@@ -1,0 +1,90 @@
+@page "/"
+@rendermode InteractiveServer
+@inject StatusApiClient StatusApiClient
+@inject ILogger<Home> Logger
+
+<PageTitle>Probabilites Loto & EuroMillions</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="landing-container">
+    <MudPaper Elevation="2" Class="hero-panel">
+        <MudText Typo="Typo.h3" GutterBottom="true">Probabilites Loto &amp; EuroMillions</MudText>
+        <MudText Typo="Typo.subtitle1">
+            Plateforme statistique informative pour consulter l'etat des donnees de tirages.
+        </MudText>
+        <MudStack Row="true" Spacing="1" Class="mt-3">
+            <MudPaper Class="tag-pill tag-pill-info" Elevation="0">
+                <MudText Typo="Typo.caption">Non affilie a FDJ</MudText>
+            </MudPaper>
+            <MudPaper Class="tag-pill tag-pill-warning" Elevation="0">
+                <MudText Typo="Typo.caption">Jeu responsable</MudText>
+            </MudPaper>
+        </MudStack>
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+            Les jeux d'argent comportent des risques: endettement, isolement, dependance.
+            Fixez vos limites et jouez avec moderation.
+        </MudAlert>
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+            Ce site ne predit aucun tirage. Les contenus sont purement informatifs et statistiques.
+        </MudAlert>
+    </MudPaper>
+
+    @if (!string.IsNullOrWhiteSpace(_messageErreur))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-4">
+            @_messageErreur
+        </MudAlert>
+    }
+
+    <MudGrid Class="mt-4">
+        <MudItem xs="12" md="4">
+            <MudPaper Class="kpi-card" Elevation="1">
+                <MudText Typo="Typo.overline">Derniere mise a jour</MudText>
+                <MudText Typo="Typo.h6">@FormatDate(_status.DerniereMiseAJourUtc)</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudPaper Class="kpi-card" Elevation="1">
+                <MudText Typo="Typo.overline">Nb tirages Loto</MudText>
+                <MudText Typo="Typo.h6">@_status.NbTiragesLoto</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudPaper Class="kpi-card" Elevation="1">
+                <MudText Typo="Typo.overline">Nb tirages EuroMillions</MudText>
+                <MudText Typo="Typo.h6">@_status.NbTiragesEuroMillions</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Elevation="0" Class="mt-4 disclaimer-panel">
+        <MudText Typo="Typo.body2">@_status.Avertissement</MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private ApiStatusResponse _status = new();
+    private string? _messageErreur;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var status = await StatusApiClient.GetStatusAsync(CancellationToken.None);
+        if (status is not null)
+        {
+            _status = status;
+            return;
+        }
+
+        Logger.LogWarning("Chargement du statut en mode placeholder.");
+        _messageErreur = "API indisponible temporairement. Les valeurs affichees sont des placeholders.";
+    }
+
+    private static string FormatDate(DateTimeOffset value)
+    {
+        if (value == default)
+        {
+            return "En attente";
+        }
+
+        return value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
+    }
+}
