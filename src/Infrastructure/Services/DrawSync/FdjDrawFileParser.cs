@@ -17,6 +17,59 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
         return true;
     });
 
+    private static readonly string[] DateColumnAliases =
+    [
+        "date_de_tirage",
+        "date_tirage",
+        "date_du_tirage",
+        "date_du_jeu",
+        "date"
+    ];
+
+    private static readonly string[] MainCombinedColumnAliases =
+    [
+        "combinaison_gagnante_en_ordre_croissant",
+        "boules_gagnantes_en_ordre_croissant",
+        "numeros_gagnants_en_ordre_croissant",
+        "numeros_gagnants"
+    ];
+
+    private static readonly string[] LotoBonusColumnAliases =
+    [
+        "numero_chance",
+        "numero_de_chance",
+        "num_chance",
+        "chance"
+    ];
+
+    private static readonly string[] EuroStar1ColumnAliases =
+    [
+        "etoile_1",
+        "etoile1",
+        "star_1",
+        "star1",
+        "lucky_star_1",
+        "lucky_star1"
+    ];
+
+    private static readonly string[] EuroStar2ColumnAliases =
+    [
+        "etoile_2",
+        "etoile2",
+        "star_2",
+        "star2",
+        "lucky_star_2",
+        "lucky_star2"
+    ];
+
+    private static readonly string[] EuroStarsCombinedAliases =
+    [
+        "etoiles_gagnantes_en_ordre_croissant",
+        "etoiles_gagnantes",
+        "stars_gagnantes_en_ordre_croissant",
+        "stars_gagnantes"
+    ];
+
     public IReadOnlyCollection<ParsedDraw> ParseArchiveEntry(
         LotteryGame game,
         string archiveName,
@@ -237,12 +290,12 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
     private static bool HasMinimumColumns(LotteryGame game, IReadOnlyDictionary<string, int> columns) =>
         game switch
         {
-            LotteryGame.Loto => columns.ContainsKey("date_de_tirage")
-                                && (columns.ContainsKey("boule_1")
-                                    || columns.ContainsKey("combinaison_gagnante_en_ordre_croissant")),
-            LotteryGame.EuroMillions => columns.ContainsKey("date_de_tirage")
-                                        && (columns.ContainsKey("boule_1")
-                                            || columns.ContainsKey("boules_gagnantes_en_ordre_croissant")),
+            LotteryGame.Loto => HasAnyColumn(columns, DateColumnAliases)
+                                && (HasAnyColumn(columns, BuildMainNumberAliases(1))
+                                    || HasAnyColumn(columns, MainCombinedColumnAliases)),
+            LotteryGame.EuroMillions => HasAnyColumn(columns, DateColumnAliases)
+                                        && (HasAnyColumn(columns, BuildMainNumberAliases(1))
+                                            || HasAnyColumn(columns, MainCombinedColumnAliases)),
             _ => false
         };
 
@@ -354,8 +407,14 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
         out DateOnly drawDate)
     {
         drawDate = default;
-        if (!TryGetColumnValue(columns, fields, "date_de_tirage", out var rawDate)
-            || string.IsNullOrWhiteSpace(rawDate))
+        if (!TryGetColumnValueByAliases(columns, fields, DateColumnAliases, out var rawDate)
+            && !TryGetColumnValueByTokens(columns, fields, ["date", "tirage"], out rawDate)
+            && !TryGetColumnValueByTokens(columns, fields, ["date"], out rawDate))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(rawDate))
         {
             return false;
         }
@@ -378,7 +437,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
 
         for (var i = 1; i <= 5; i++)
         {
-            if (TryGetColumnValue(columns, fields, $"boule_{i}", out var rawValue)
+            if (TryGetColumnValueByAliases(columns, fields, BuildMainNumberAliases(i), out var rawValue)
                 && TryParseInt(rawValue, out var number))
             {
                 values.Add(number);
@@ -391,27 +450,21 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
             return true;
         }
 
-        var combinedColumns = new[]
+        if (TryGetColumnValueByAliases(columns, fields, MainCombinedColumnAliases, out var combinedValue)
+            || TryGetColumnValueByTokens(columns, fields, ["combinaison", "gagnante"], out combinedValue)
+            || TryGetColumnValueByTokens(columns, fields, ["boules", "gagnantes"], out combinedValue)
+            || TryGetColumnValueByTokens(columns, fields, ["numeros", "gagnants"], out combinedValue))
         {
-            "combinaison_gagnante_en_ordre_croissant",
-            "boules_gagnantes_en_ordre_croissant"
-        };
+            var extracted = NumberRegex()
+                .Matches(combinedValue)
+                .Select(match => int.Parse(match.Value, CultureInfo.InvariantCulture))
+                .Take(5)
+                .ToArray();
 
-        foreach (var column in combinedColumns)
-        {
-            if (TryGetColumnValue(columns, fields, column, out var combinedValue))
+            if (extracted.Length == 5)
             {
-                var extracted = NumberRegex()
-                    .Matches(combinedValue)
-                    .Select(match => int.Parse(match.Value, CultureInfo.InvariantCulture))
-                    .Take(5)
-                    .ToArray();
-
-                if (extracted.Length == 5)
-                {
-                    mainNumbers = extracted;
-                    return true;
-                }
+                mainNumbers = extracted;
+                return true;
             }
         }
 
@@ -428,14 +481,15 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
 
         if (game == LotteryGame.Loto)
         {
-            if (TryGetColumnValue(columns, fields, "numero_chance", out var numeroChance)
+            if (TryGetColumnValueByAliases(columns, fields, LotoBonusColumnAliases, out var numeroChance)
                 && TryParseInt(numeroChance, out var bonus))
             {
                 bonusNumbers = [bonus];
                 return true;
             }
 
-            if (TryGetColumnValue(columns, fields, "combinaison_gagnante_en_ordre_croissant", out var combined))
+            if (TryGetColumnValueByAliases(columns, fields, MainCombinedColumnAliases, out var combined)
+                || TryGetColumnValueByTokens(columns, fields, ["combinaison", "gagnante"], out combined))
             {
                 var extracted = NumberRegex()
                     .Matches(combined)
@@ -451,8 +505,8 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
             return false;
         }
 
-        if (TryGetColumnValue(columns, fields, "etoile_1", out var etoile1)
-            && TryGetColumnValue(columns, fields, "etoile_2", out var etoile2)
+        if (TryGetColumnValueByAliases(columns, fields, EuroStar1ColumnAliases, out var etoile1)
+            && TryGetColumnValueByAliases(columns, fields, EuroStar2ColumnAliases, out var etoile2)
             && TryParseInt(etoile1, out var bonus1)
             && TryParseInt(etoile2, out var bonus2))
         {
@@ -460,7 +514,9 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
             return true;
         }
 
-        if (TryGetColumnValue(columns, fields, "etoiles_gagnantes_en_ordre_croissant", out var starsCombined))
+        if (TryGetColumnValueByAliases(columns, fields, EuroStarsCombinedAliases, out var starsCombined)
+            || TryGetColumnValueByTokens(columns, fields, ["etoiles", "gagnantes"], out starsCombined)
+            || TryGetColumnValueByTokens(columns, fields, ["stars", "gagnantes"], out starsCombined))
         {
             var extracted = NumberRegex()
                 .Matches(starsCombined)
@@ -498,6 +554,72 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
         value = fields[index].Trim();
         return true;
     }
+
+    private static bool TryGetColumnValueByAliases(
+        IReadOnlyDictionary<string, int> columns,
+        IReadOnlyList<string> fields,
+        IReadOnlyCollection<string> aliases,
+        out string value)
+    {
+        foreach (var alias in aliases)
+        {
+            if (TryGetColumnValue(columns, fields, alias, out value))
+            {
+                return true;
+            }
+        }
+
+        value = string.Empty;
+        return false;
+    }
+
+    private static bool TryGetColumnValueByTokens(
+        IReadOnlyDictionary<string, int> columns,
+        IReadOnlyList<string> fields,
+        IReadOnlyCollection<string> tokens,
+        out string value)
+    {
+        foreach (var column in columns.Keys)
+        {
+            if (!tokens.All(token => column.Contains(token, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            if (TryGetColumnValue(columns, fields, column, out value))
+            {
+                return true;
+            }
+        }
+
+        value = string.Empty;
+        return false;
+    }
+
+    private static bool HasAnyColumn(IReadOnlyDictionary<string, int> columns, IReadOnlyCollection<string> aliases)
+    {
+        foreach (var alias in aliases)
+        {
+            if (columns.ContainsKey(alias))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string[] BuildMainNumberAliases(int index) =>
+    [
+        $"boule_{index}",
+        $"boule{index}",
+        $"numero_{index}",
+        $"numero{index}",
+        $"num_{index}",
+        $"num{index}",
+        $"n_{index}",
+        $"n{index}"
+    ];
 
     private static bool TryParseInt(string value, out int result) =>
         int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out result)

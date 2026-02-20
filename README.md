@@ -1,137 +1,139 @@
-# Probabilites Loto & EuroMillions
+# Probabilités Loto & EuroMillions
 
-Application web vitrine en francais, informative et statistique, construite avec .NET 10.
+Application web informative et statistique autour des tirages Loto et EuroMillions, construite en .NET 10 avec une architecture `web + api + worker + postgres`.
 
-## Objectifs
-- Fournir un socle pro/auditable: API, Web Blazor, Worker, architecture en couches.
-- Exposer des indicateurs de statut (comptes reels des tirages + derniere synchro).
-- Synchroniser automatiquement les tirages FDJ (archives ZIP publiques) vers PostgreSQL.
-- Proposer un demarrage local via Docker Compose et via .NET Aspire.
+## Objectif du projet
+- fournir un socle auditable et exploitable en production;
+- synchroniser les archives FDJ dans PostgreSQL;
+- proposer des statistiques et une génération de grilles explicable;
+- exposer une administration minimale, protégée;
+- garantir une observabilité complète (logs, traces, métriques, santé).
 
-## Avertissements importants
-- Ce projet est strictement informatif/statistique.
-- Aucun algorithme de prediction de tirage n'est fourni.
-- Jeu responsable: les jeux d'argent comportent des risques (dependance, isolement, endettement).
-- Non affilie a FDJ.
+## Fonctionnalités principales
+### Observabilité
+- logs Serilog structurés (JSON) sur `Api`, `Worker`, `Web`;
+- OpenTelemetry traces + métriques (instrumentation HTTP/runtime + métriques métier DrawSync);
+- health checks:
+  - `postgres` (toujours actif côté API),
+  - `smtp` (optionnel via `HealthChecks:Smtp:Enabled`).
 
-## RGPD (etat actuel du socle)
-- Donnees minimales stockees: email + parametres d'abonnement.
-- Double opt-in: un abonnement reste `Pending` tant que le lien de confirmation n'est pas clique.
-- Lien de desinscription 1 clic inclus dans chaque email.
-- Endpoint de suppression des donnees par email disponible (`DELETE /api/subscriptions/data`).
-- Aucune reutilisation marketing des emails n'est incluse dans ce socle.
+### Administration minimale
+- endpoint protégé `POST /api/admin/sync` (header `X-Api-Key`);
+- endpoint protégé `GET /api/admin/sync-runs`;
+- page Web `/admin` protégée par authentification HTTP Basic:
+  - visualisation des derniers `SyncRuns`,
+  - bouton `Sync maintenant`.
 
-## Stack technique
-- .NET 10
-- ASP.NET Core Web API (`src/Api`)
-- Blazor Web App + MudBlazor (`src/Web`)
-- Worker + Quartz.NET (`src/Worker`)
-- EF Core + Npgsql (`src/Infrastructure`)
-- OpenTelemetry + Serilog (logs/traces/metrics)
-- .NET Aspire (`src/AppHost`, `src/ServiceDefaults`)
-- PostgreSQL + MailHog (dev)
+### Robustesse d'ingestion
+- parsing HTML tolérant aux variations mineures (labels/URLs);
+- parsing CSV/Excel tolérant aux variations de colonnes (aliases + fallback par tokens);
+- cache HTTP conditionnel sur les pages d'historique FDJ:
+  - `ETag` / `If-None-Match`,
+  - `Last-Modified` / `If-Modified-Since`,
+  - persistance du cache dans `sync_state`.
 
-## Structure
+### Qualité et tests
+- tests unitaires sur les parties critiques:
+  - règles de combinaisons,
+  - sampling pondéré,
+  - parsing des fichiers FDJ;
+- tests d'intégration `API + PostgreSQL` via Testcontainers.
+
+## Architecture
 ```text
-/
-  src/
-    AppHost/
-    ServiceDefaults/
-    Api/
-    Worker/
-    Web/
-    Domain/
-    Application/
-    Infrastructure/
-  tests/
-    UnitTests/
-    IntegrationTests/
-  ops/
-    docker-compose.dev.yml
-    .env.example
-  .github/workflows/ci.yml
-  README.md
-  LICENSE
-  global.json
+src/
+  AppHost/           Orchestration .NET Aspire
+  ServiceDefaults/   Observabilité commune, discovery, résilience
+  Api/               API minimale ASP.NET Core
+  Worker/            Jobs Quartz (sync + envois)
+  Web/               Interface Blazor Server + MudBlazor
+  Domain/            Modèle métier
+  Application/       Contrats et DTO
+  Infrastructure/    EF Core, services, ingestion, SMTP
+
+tests/
+  UnitTests/
+  IntegrationTests/
+
+ops/
+  docker-compose.dev.yml
+  docker-compose.prod.yml
+  .env.example
 ```
 
-## Prerequis
-- .NET SDK 10.0.103+
-- Docker Desktop (ou Docker Engine + Compose)
+## Prérequis
+- .NET SDK 10.0.103+;
+- Docker Desktop (ou Docker Engine + Compose).
 
-## Lancer avec Aspire (dev local recommande)
-1. Definir un mot de passe Postgres pour `AppHost`:
-```powershell
-dotnet user-secrets set "Parameters:postgres-password" "change-me-local-only" --project src/AppHost
-```
-2. Lancer l'orchestrateur:
-```powershell
-dotnet run --project src/AppHost
-```
-3. Ouvrir le dashboard Aspire puis acceder aux services:
-- Web: URL exposee par Aspire
-- API: URL exposee par Aspire (`/swagger`, `/api/status`, `/health`)
+## Démarrage rapide (Docker Compose, recommandé)
+Depuis la racine du dépôt:
 
-## Lancer avec Docker Compose
-1. Optionnel: creer `ops/.env` a partir de `ops/.env.example`.
-2. Depuis `ops/`, lancer:
 ```powershell
-docker compose -f docker-compose.dev.yml up --build
+docker compose up --build
 ```
-3. Endpoints:
+
+Services disponibles:
 - Web: `http://localhost:8080`
 - API Swagger: `http://localhost:8081/swagger`
-- API status: `http://localhost:8081/api/status`
-- API health: `http://localhost:8081/health`
+- API Health: `http://localhost:8081/health`
 - MailHog: `http://localhost:8025`
 - PostgreSQL: `localhost:5432`
 
-## Configuration (variables d'environnement)
-- `ConnectionStrings__Postgres`
-- `Admin__ApiKey` (ou `ADMIN_API_KEY`)
-- `Api__BaseUrl`
-- `SMTP_HOST` (ou `Smtp__Host`)
-- `SMTP_PORT` (ou `Smtp__Port`)
-- `SMTP_USER` (ou `Smtp__Username`)
-- `SMTP_PASS` (ou `Smtp__Password`)
-- `SMTP_FROM` (email expediteur, ex `No Reply <no-reply@example.local>`)
-- `PUBLIC_BASE_URL` (base publique des liens emails)
-- `SUBSCRIPTIONS_TOKEN_SECRET` (secret de signature des tokens)
-- `Smtp__UseStartTls`
-- `Jobs__SyncDraws__Cron`
-- `Jobs__SyncDraws__TimeZoneId`
-- `Jobs__SyncDraws__RunOnStartup`
-- `Jobs__SendSubscriptions__Cron`
-- `Jobs__SendSubscriptions__TimeZoneId`
-- `Jobs__SendSubscriptions__RunOnStartup`
-- `DrawSync__Loto__RuleStartDate`
-- `DrawSync__EuroMillions__RuleStartDate`
-- `DrawSync__Loto__HistoryUrl`
-- `DrawSync__EuroMillions__HistoryUrl`
-- `DrawSync__UserAgent`
-- `DrawSync__HttpTimeoutSeconds`
+Identifiants admin Web par défaut (dev):
+- utilisateur: `admin`
+- mot de passe: `dev-admin-ui-password`
 
-## Qualite et CI
-- Nullable active partout
-- Analyzers .NET actifs
-- Warnings as errors sur `src/*`
-- Health checks exposes sur API/Web (`/health`)
-- Pipeline GitHub Actions: restore, build, tests, verification format
+## Démarrage avec Aspire
+1. Définir le mot de passe PostgreSQL d'AppHost:
+```powershell
+dotnet user-secrets set "Parameters:postgres-password" "change-me-local-only" --project src/AppHost
+```
+2. Lancer:
+```powershell
+dotnet run --project src/AppHost
+```
+3. Ouvrir le tableau de bord Aspire puis naviguer vers `web`, `api`, `worker`.
+
+## Variables de configuration importantes
+- `ConnectionStrings__Postgres`
+- `Admin__ApiKey` / `ADMIN_API_KEY`
+- `Admin__WebUsername` / `ADMIN_WEB_USERNAME`
+- `Admin__WebPassword` / `ADMIN_WEB_PASSWORD`
+- `Api__BaseUrl`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- `PUBLIC_BASE_URL`
+- `SUBSCRIPTIONS_TOKEN_SECRET`
+- `HealthChecks__Smtp__Enabled`
+- `Jobs__SyncDraws__*`, `Jobs__SendSubscriptions__*`
+- `DrawSync__Loto__*`, `DrawSync__EuroMillions__*`
 
 ## Commandes utiles
 ```powershell
 dotnet restore
 dotnet build
 dotnet test
+dotnet test --collect:"XPlat Code Coverage"
 ```
 
 ## Endpoints API utiles
-- `GET /api/status` : `lastSyncAt`, compteurs, `lastDrawDate` et `nextDrawDate` par jeu.
-- `GET /api/stats/{game}` : frequences par numero (main/bonus), derniere sortie, periode analysee.
-- `POST /api/grids/generate` : generation de 1 a 100 grilles uniques (`uniform`, `frequency`, `recency`) avec score explicable.
-- `POST /api/admin/sync` : declenche une synchro manuelle (header `X-Api-Key` requis).
-- `POST /api/subscriptions` : creation `Pending` + envoi email de confirmation.
-- `GET /api/subscriptions/confirm?token=...` : activation de l'abonnement.
-- `GET /api/subscriptions/unsubscribe?token=...` : desinscription.
-- `GET /api/subscriptions/status?email=...` : consultation des abonnements d'un email.
-- `DELETE /api/subscriptions/data?email=...` : suppression des donnees d'abonnement (RGPD minimal).
+- `GET /api/status`
+- `GET /api/stats/{game}`
+- `POST /api/grids/generate`
+- `POST /api/subscriptions`
+- `GET /api/subscriptions/confirm`
+- `GET /api/subscriptions/unsubscribe`
+- `GET /api/subscriptions/status`
+- `DELETE /api/subscriptions/data`
+- `POST /api/admin/sync`
+- `GET /api/admin/sync-runs`
+
+## Documentation complémentaire
+- ADR: `docs/adr/0001-observabilite-admin-ingestion.md`
+- Schéma base: `docs/schema-db.md`
+- Déploiement Docker prod: `docs/deploiement-docker.md`
+
+## Avertissements
+- projet strictement informatif/statistique;
+- aucune prédiction de tirage;
+- jeu responsable: les jeux d'argent comportent des risques (dépendance, isolement, endettement);
+- projet non affilié à FDJ.

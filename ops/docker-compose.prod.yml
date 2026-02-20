@@ -1,0 +1,77 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: probabilites_loto
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER manquant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d probabilites_loto" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: src/Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Admin__ApiKey: ${ADMIN_API_KEY:?ADMIN_API_KEY manquant}
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST manquant}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:?SMTP_FROM manquant}
+      Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-true}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?PUBLIC_BASE_URL manquant}
+      SUBSCRIPTIONS_TOKEN_SECRET: ${SUBSCRIPTIONS_TOKEN_SECRET:?SUBSCRIPTIONS_TOKEN_SECRET manquant}
+      HealthChecks__Smtp__Enabled: true
+
+  worker:
+    build:
+      context: ..
+      dockerfile: src/Worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST manquant}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:?SMTP_FROM manquant}
+      Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-true}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?PUBLIC_BASE_URL manquant}
+      SUBSCRIPTIONS_TOKEN_SECRET: ${SUBSCRIPTIONS_TOKEN_SECRET:?SUBSCRIPTIONS_TOKEN_SECRET manquant}
+
+  web:
+    build:
+      context: ..
+      dockerfile: src/Web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Api__BaseUrl: http://api:8080
+      Admin__ApiKey: ${ADMIN_API_KEY:?ADMIN_API_KEY manquant}
+      Admin__WebUsername: ${ADMIN_WEB_USERNAME:-admin}
+      Admin__WebPassword: ${ADMIN_WEB_PASSWORD:?ADMIN_WEB_PASSWORD manquant}
+    ports:
+      - "80:8080"
+
+volumes:
+  postgres_data:

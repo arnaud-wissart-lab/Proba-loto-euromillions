@@ -9,4 +9,10 @@ public sealed class SyncStateEntity
     public DateTimeOffset? LastSuccessfulSyncAtUtc { get; set; }
 
     public DateOnly? LastKnownDrawDate { get; set; }
+
+    public string? HistoryPageEtag { get; set; }
+
+    public DateTimeOffset? HistoryPageLastModifiedUtc { get; set; }
+
+    public string? CachedArchivesJson { get; set; }
 }

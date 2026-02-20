@@ -22,8 +22,7 @@ builder.Host.UseSerilog(
             .ReadFrom.Configuration(context.Configuration)
             .ReadFrom.Services(services)
             .Enrich.FromLogContext()
-            .Enrich.WithProperty("Service", "Api")
-            .WriteTo.Console(),
+            .Enrich.WithProperty("Service", "Api"),
     writeToProviders: true);
 
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -185,6 +184,48 @@ app.MapPost(
     .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
 app.MapGet(
+        "/api/admin/sync-runs",
+        async (HttpContext httpContext, LotteryDbContext dbContext, int? take, CancellationToken cancellationToken) =>
+        {
+            var configuredApiKey = ResolveAdminApiKey(app.Configuration);
+            if (string.IsNullOrWhiteSpace(configuredApiKey))
+            {
+                return Results.Problem(
+                    "Configuration admin manquante : définir Admin__ApiKey (ou ADMIN_API_KEY).",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            if (!TryValidateApiKey(httpContext, configuredApiKey))
+            {
+                return Results.Unauthorized();
+            }
+
+            var effectiveTake = Math.Clamp(take ?? 50, 1, 200);
+            var runs = await dbContext.SyncRuns
+                .AsNoTracking()
+                .OrderByDescending(entity => entity.StartedAtUtc)
+                .Take(effectiveTake)
+                .Select(entity => new AdminSyncRunDto(
+                    entity.Id,
+                    entity.Game.ToString(),
+                    entity.Status.ToString(),
+                    entity.StartedAtUtc,
+                    entity.FinishedAtUtc,
+                    entity.DrawsUpsertedCount,
+                    entity.Error))
+                .ToArrayAsync(cancellationToken);
+
+            return Results.Ok(runs);
+        })
+    .WithName("GetAdminSyncRuns")
+    .WithTags("Admin")
+    .WithSummary("Retourne les derniers runs de synchronisation.")
+    .WithDescription("Protection simple via header X-Api-Key.")
+    .Produces<IReadOnlyCollection<AdminSyncRunDto>>(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status401Unauthorized)
+    .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
+app.MapGet(
         "/api/subscriptions/confirm",
         async (string token, ISubscriptionService subscriptionService, CancellationToken cancellationToken) =>
             Results.Ok(await subscriptionService.ConfirmAsync(token, cancellationToken)))
@@ -250,9 +291,7 @@ app.MapPost(
         "/api/admin/sync",
         async (HttpContext httpContext, IDrawSyncService drawSyncService, CancellationToken cancellationToken) =>
         {
-            var configuredApiKey =
-                app.Configuration["Admin:ApiKey"] ??
-                Environment.GetEnvironmentVariable("ADMIN_API_KEY");
+            var configuredApiKey = ResolveAdminApiKey(app.Configuration);
 
             if (string.IsNullOrWhiteSpace(configuredApiKey))
             {
@@ -300,6 +339,9 @@ static bool TryValidateApiKey(HttpContext httpContext, string configuredApiKey)
     return configuredBytes.Length == providedBytes.Length
            && CryptographicOperations.FixedTimeEquals(configuredBytes, providedBytes);
 }
+
+static string? ResolveAdminApiKey(IConfiguration configuration) =>
+    configuration["Admin:ApiKey"] ?? Environment.GetEnvironmentVariable("ADMIN_API_KEY");
 
 static Dictionary<string, string[]> ValidateGenerateRequest(
     GenerateGridsRequestDto request,

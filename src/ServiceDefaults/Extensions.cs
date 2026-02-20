@@ -57,6 +57,7 @@ public static class Extensions
             {
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
+                    .AddMeter("ProbabilitesLotoEuroMillions.DrawSync")
                     .AddRuntimeInstrumentation();
             })
             .WithTracing(tracing =>

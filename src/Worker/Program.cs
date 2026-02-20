@@ -15,8 +15,7 @@ builder.Services.AddSerilog(
             .ReadFrom.Configuration(builder.Configuration)
             .ReadFrom.Services(services)
             .Enrich.FromLogContext()
-            .Enrich.WithProperty("Service", "Worker")
-            .WriteTo.Console());
+            .Enrich.WithProperty("Service", "Worker"));
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.Configure<SyncDrawsJobOptions>(builder.Configuration.GetSection(SyncDrawsJobOptions.SectionName));

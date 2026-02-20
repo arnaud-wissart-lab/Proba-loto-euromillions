@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.IO.Compression;
+using System.Text.Json;
 using Application.Abstractions;
 using Application.Models;
 using Domain.Enums;
@@ -20,6 +22,20 @@ public sealed class DrawSyncService(
     ILogger<DrawSyncService> logger) : IDrawSyncService
 {
     private static readonly ActivitySource ActivitySource = new("ProbabilitesLotoEuroMillions.DrawSync");
+    private static readonly Meter Meter = new("ProbabilitesLotoEuroMillions.DrawSync", "1.0.0");
+    private static readonly Counter<long> SyncRunsCounter = Meter.CreateCounter<long>(
+        "draw_sync_runs_total",
+        unit: "{run}",
+        description: "Nombre de synchronisations de tirages executees.");
+    private static readonly Counter<long> DrawsUpsertedCounter = Meter.CreateCounter<long>(
+        "draw_sync_draws_upserted_total",
+        unit: "{draw}",
+        description: "Nombre de tirages inseres ou mis a jour.");
+    private static readonly Histogram<double> SyncDurationSeconds = Meter.CreateHistogram<double>(
+        "draw_sync_duration_seconds",
+        unit: "s",
+        description: "Duree d'execution d'une synchronisation de tirages.");
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<SyncExecutionSummaryDto> SyncAllAsync(string trigger, CancellationToken cancellationToken)
     {
@@ -55,7 +71,11 @@ public sealed class DrawSyncService(
         try
         {
             var gameOptions = options.Value.GetGameOptions(game);
-            var archives = await archiveClient.DiscoverArchivesAsync(game, cancellationToken);
+            var state = await GetOrCreateSyncStateAsync(game, cancellationToken);
+            var discoveryCache = BuildArchiveCache(state);
+            var discovery = await archiveClient.DiscoverArchivesAsync(game, discoveryCache, cancellationToken);
+            var archives = discovery.Archives;
+
             if (archives.Count == 0)
             {
                 throw new InvalidOperationException($"Aucune archive FDJ trouvee pour {game}.");
@@ -104,7 +124,7 @@ public sealed class DrawSyncService(
             var lastKnownDrawDate = drawByDate.Keys.Max();
             var finishedAtUtc = DateTimeOffset.UtcNow;
 
-            await UpdateSyncStateAsync(game, finishedAtUtc, lastKnownDrawDate, cancellationToken);
+            UpdateSyncState(state, finishedAtUtc, lastKnownDrawDate, discovery);
 
             run.Status = SyncRunStatus.Success;
             run.FinishedAtUtc = finishedAtUtc;
@@ -113,12 +133,23 @@ public sealed class DrawSyncService(
             await dbContext.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation(
-                "Sync {Game} terminee (trigger={Trigger}, archives={ArchiveCount}, upserts={UpsertCount}, lastDrawDate={LastDrawDate}).",
+                "Sync {Game} terminee (trigger={Trigger}, archives={ArchiveCount}, upserts={UpsertCount}, lastDrawDate={LastDrawDate}, cache={IsFromCache}).",
                 game,
                 trigger,
                 archives.Count,
                 upsertedCount,
-                lastKnownDrawDate);
+                lastKnownDrawDate,
+                discovery.IsFromCache);
+
+            var successTags = new TagList
+            {
+                { "game", game.ToString() },
+                { "trigger", trigger },
+                { "status", SyncRunStatus.Success.ToString() }
+            };
+            SyncRunsCounter.Add(1, successTags);
+            DrawsUpsertedCounter.Add(upsertedCount, successTags);
+            SyncDurationSeconds.Record((finishedAtUtc - startedAtUtc).TotalSeconds, successTags);
 
             return new GameSyncResultDto(
                 game,
@@ -143,6 +174,15 @@ public sealed class DrawSyncService(
             await dbContext.SaveChangesAsync(cancellationToken);
 
             logger.LogError(exception, "Sync {Game} en echec (trigger={Trigger}).", game, trigger);
+
+            var failureTags = new TagList
+            {
+                { "game", game.ToString() },
+                { "trigger", trigger },
+                { "status", SyncRunStatus.Fail.ToString() }
+            };
+            SyncRunsCounter.Add(1, failureTags);
+            SyncDurationSeconds.Record((finishedAtUtc - startedAtUtc).TotalSeconds, failureTags);
 
             return new GameSyncResultDto(
                 game,
@@ -204,25 +244,108 @@ public sealed class DrawSyncService(
         return upserted;
     }
 
-    private async Task UpdateSyncStateAsync(
-        LotteryGame game,
-        DateTimeOffset finishedAtUtc,
-        DateOnly lastKnownDrawDate,
-        CancellationToken cancellationToken)
+    private async Task<SyncStateEntity> GetOrCreateSyncStateAsync(LotteryGame game, CancellationToken cancellationToken)
     {
         var state = await dbContext.SyncStates.FindAsync([game], cancellationToken);
-        if (state is null)
+        if (state is not null)
         {
-            state = new SyncStateEntity
-            {
-                Game = game
-            };
-            dbContext.SyncStates.Add(state);
+            return state;
         }
 
+        state = new SyncStateEntity
+        {
+            Game = game
+        };
+        dbContext.SyncStates.Add(state);
+        return state;
+    }
+
+    private ArchiveDiscoveryCache? BuildArchiveCache(SyncStateEntity state)
+    {
+        var cachedArchives = DeserializeCachedArchives(state.CachedArchivesJson);
+        if (string.IsNullOrWhiteSpace(state.HistoryPageEtag)
+            && state.HistoryPageLastModifiedUtc is null
+            && cachedArchives.Count == 0)
+        {
+            return null;
+        }
+
+        return new ArchiveDiscoveryCache(
+            state.HistoryPageEtag,
+            state.HistoryPageLastModifiedUtc,
+            cachedArchives);
+    }
+
+    private IReadOnlyCollection<FdjArchiveDescriptor> DeserializeCachedArchives(string? rawJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson))
+        {
+            return [];
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<List<CachedArchiveDto>>(rawJson, JsonOptions) ?? [];
+            var archives = parsed
+                .Where(item =>
+                    Uri.TryCreate(item.DownloadUrl, UriKind.Absolute, out _)
+                    && Uri.TryCreate(item.SourcePageUrl, UriKind.Absolute, out _))
+                .Select(item => new FdjArchiveDescriptor(
+                    new Uri(item.DownloadUrl, UriKind.Absolute),
+                    new Uri(item.SourcePageUrl, UriKind.Absolute),
+                    item.Label,
+                    item.PeriodStart,
+                    item.PeriodEnd))
+                .ToArray();
+
+            return archives;
+        }
+        catch (JsonException exception)
+        {
+            logger.LogWarning(exception, "Cache d'archives invalide pour DrawSync. Le cache est ignore.");
+            return [];
+        }
+    }
+
+    private void UpdateSyncState(
+        SyncStateEntity state,
+        DateTimeOffset finishedAtUtc,
+        DateOnly lastKnownDrawDate,
+        ArchiveDiscoveryResult discovery)
+    {
         state.LastSuccessfulSyncAtUtc = finishedAtUtc;
         state.LastKnownDrawDate = state.LastKnownDrawDate is { } existingLastDate && existingLastDate > lastKnownDrawDate
             ? existingLastDate
             : lastKnownDrawDate;
+
+        state.HistoryPageEtag = discovery.ETag;
+        state.HistoryPageLastModifiedUtc = discovery.LastModifiedUtc;
+        state.CachedArchivesJson = SerializeCachedArchives(discovery.Archives);
     }
+
+    private static string? SerializeCachedArchives(IReadOnlyCollection<FdjArchiveDescriptor> archives)
+    {
+        if (archives.Count == 0)
+        {
+            return null;
+        }
+
+        var payload = archives
+            .Select(archive => new CachedArchiveDto(
+                archive.DownloadUrl.AbsoluteUri,
+                archive.SourcePageUrl.AbsoluteUri,
+                archive.Label,
+                archive.PeriodStart,
+                archive.PeriodEnd))
+            .ToArray();
+
+        return JsonSerializer.Serialize(payload, JsonOptions);
+    }
+
+    private sealed record CachedArchiveDto(
+        string DownloadUrl,
+        string SourcePageUrl,
+        string Label,
+        DateOnly? PeriodStart,
+        DateOnly? PeriodEnd);
 }

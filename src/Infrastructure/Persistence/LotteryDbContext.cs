@@ -79,5 +79,8 @@ public sealed class LotteryDbContext(DbContextOptions<LotteryDbContext> options)
         syncState.Property(entity => entity.Game).HasConversion<string>().HasMaxLength(32);
         syncState.Property(entity => entity.LastSuccessfulSyncAtUtc).HasColumnType("timestamp with time zone");
         syncState.Property(entity => entity.LastKnownDrawDate).HasColumnType("date");
+        syncState.Property(entity => entity.HistoryPageEtag).HasMaxLength(512);
+        syncState.Property(entity => entity.HistoryPageLastModifiedUtc).HasColumnType("timestamp with time zone");
+        syncState.Property(entity => entity.CachedArchivesJson).HasColumnType("text");
     }
 }

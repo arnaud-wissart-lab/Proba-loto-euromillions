@@ -4,7 +4,10 @@ namespace Infrastructure.Services.DrawSync;
 
 public interface IFdjArchiveClient
 {
-    Task<IReadOnlyCollection<FdjArchiveDescriptor>> DiscoverArchivesAsync(LotteryGame game, CancellationToken cancellationToken);
+    Task<ArchiveDiscoveryResult> DiscoverArchivesAsync(
+        LotteryGame game,
+        ArchiveDiscoveryCache? cache,
+        CancellationToken cancellationToken);
 
     Task<byte[]> DownloadArchiveAsync(Uri archiveUrl, CancellationToken cancellationToken);
 }

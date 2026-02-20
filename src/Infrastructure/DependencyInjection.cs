@@ -1,5 +1,6 @@
 using Application.Abstractions;
 using Infrastructure.Email;
+using Infrastructure.HealthChecks;
 using Infrastructure.Options;
 using Infrastructure.Persistence;
 using Infrastructure.Services;
@@ -51,6 +52,15 @@ public static class DependencyInjection
 
         services.AddDbContext<LotteryDbContext>(options =>
             options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure()));
+
+        var smtpHealthCheckEnabled = configuration.GetValue<bool?>("HealthChecks:Smtp:Enabled") ?? false;
+        var healthChecks = services.AddHealthChecks()
+            .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
+
+        if (smtpHealthCheckEnabled)
+        {
+            healthChecks.AddCheck<SmtpHealthCheck>("smtp", tags: ["ready"]);
+        }
 
         services.AddHttpClient(HttpClientNames.FdjArchive, (serviceProvider, client) =>
             {

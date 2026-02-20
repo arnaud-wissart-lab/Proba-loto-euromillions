@@ -28,7 +28,7 @@ services:
   api:
     container_name: probabilites-api
     build:
-      context: ..
+      context: .
       dockerfile: src/Api/Dockerfile
     restart: unless-stopped
     depends_on:
@@ -51,7 +51,7 @@ services:
   worker:
     container_name: probabilites-worker
     build:
-      context: ..
+      context: .
       dockerfile: src/Worker/Dockerfile
     restart: unless-stopped
     depends_on:
@@ -72,7 +72,7 @@ services:
   web:
     container_name: probabilites-web
     build:
-      context: ..
+      context: .
       dockerfile: src/Web/Dockerfile
     restart: unless-stopped
     depends_on:

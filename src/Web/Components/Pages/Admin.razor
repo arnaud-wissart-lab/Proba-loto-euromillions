@@ -1,0 +1,192 @@
+@page "/admin"
+@inject LotteryApiClient LotteryApiClient
+@inject ILogger<Admin> Logger
+
+<PageTitle>Administration</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="page-container">
+    <MudPaper Elevation="1" Class="section-panel">
+        <MudText Typo="Typo.h4" GutterBottom="true">Administration</MudText>
+        <MudText Typo="Typo.body2">
+            Cette page est reservee a l'administration et protegee par authentification HTTP basique.
+            Elle permet de lancer une synchronisation immediate et de consulter l'historique des executions.
+        </MudText>
+
+        <MudStack Row="true" Spacing="2" Class="mt-3 wrap-stack">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@(_isLoading || _isSyncRunning)"
+                       OnClick="@TriggerSyncAsync">
+                @if (_isSyncRunning)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                }
+                Sync maintenant
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Secondary"
+                       Disabled="@(_isLoading || _isSyncRunning)"
+                       OnClick="@RefreshAsync">
+                Rafraichir
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-4">
+            @_errorMessage
+        </MudAlert>
+    }
+
+    @if (_lastSyncSummary is not null)
+    {
+        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+            Synchronisation terminee.
+            Debut: @FormatDateTime(_lastSyncSummary.StartedAtUtc),
+            fin: @FormatDateTime(_lastSyncSummary.FinishedAtUtc),
+            jeux traites: @_lastSyncSummary.Games.Count.
+        </MudAlert>
+    }
+
+    <MudPaper Elevation="0" Class="section-panel mt-4">
+        <MudText Typo="Typo.h6">Derniers runs de synchronisation</MudText>
+        @if (_isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" Class="mt-3" />
+        }
+        else if (_runs.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+                Aucun run enregistre.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="_runs" Dense="true" Hover="true" Class="mt-3">
+                <HeaderContent>
+                    <MudTh>Debut (UTC)</MudTh>
+                    <MudTh>Fin (UTC)</MudTh>
+                    <MudTh>Jeu</MudTh>
+                    <MudTh>Statut</MudTh>
+                    <MudTh>Upserts</MudTh>
+                    <MudTh>Duree</MudTh>
+                    <MudTh>Erreur</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Debut">@FormatDateTime(context.StartedAtUtc)</MudTd>
+                    <MudTd DataLabel="Fin">@FormatDateTime(context.FinishedAtUtc)</MudTd>
+                    <MudTd DataLabel="Jeu">@context.Game</MudTd>
+                    <MudTd DataLabel="Statut">@context.Status</MudTd>
+                    <MudTd DataLabel="Upserts">@context.DrawsUpsertedCount</MudTd>
+                    <MudTd DataLabel="Duree">@FormatDuration(context.StartedAtUtc, context.FinishedAtUtc)</MudTd>
+                    <MudTd DataLabel="Erreur">
+                        @if (string.IsNullOrWhiteSpace(context.Error))
+                        {
+                            <MudText Typo="Typo.caption">-</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption">@Truncate(context.Error, 120)</MudText>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private readonly List<ApiAdminSyncRunResponse> _runs = [];
+    private bool _isLoading;
+    private bool _isSyncRunning;
+    private string? _errorMessage;
+    private ApiSyncExecutionSummaryResponse? _lastSyncSummary;
+
+    protected override async Task OnInitializedAsync() => await LoadRunsAsync();
+
+    private async Task RefreshAsync() => await LoadRunsAsync();
+
+    private async Task TriggerSyncAsync()
+    {
+        _errorMessage = null;
+        _isSyncRunning = true;
+
+        try
+        {
+            var summary = await LotteryApiClient.TriggerAdminSyncAsync(CancellationToken.None);
+            if (summary is null)
+            {
+                _errorMessage = "Synchronisation admin indisponible (verifiez Admin:ApiKey).";
+                return;
+            }
+
+            _lastSyncSummary = summary;
+            await LoadRunsAsync();
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Declenchement sync admin en echec.");
+            _errorMessage = "Erreur inattendue pendant la synchronisation admin.";
+        }
+        finally
+        {
+            _isSyncRunning = false;
+        }
+    }
+
+    private async Task LoadRunsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var runs = await LotteryApiClient.GetAdminSyncRunsAsync(100, CancellationToken.None);
+            _runs.Clear();
+
+            if (runs is null)
+            {
+                _errorMessage = "Lecture des SyncRuns indisponible (verifiez Admin:ApiKey).";
+                return;
+            }
+
+            _runs.AddRange(runs.OrderByDescending(item => item.StartedAtUtc));
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Chargement des SyncRuns admin en echec.");
+            _errorMessage = "Erreur inattendue lors du chargement des SyncRuns.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatDateTime(DateTimeOffset? value) =>
+        value is null
+            ? "-"
+            : value.Value.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss");
+
+    private static string FormatDuration(DateTimeOffset startedAtUtc, DateTimeOffset? finishedAtUtc)
+    {
+        if (finishedAtUtc is null || finishedAtUtc < startedAtUtc)
+        {
+            return "-";
+        }
+
+        var duration = finishedAtUtc.Value - startedAtUtc;
+        return $"{duration.TotalSeconds:0.##} s";
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        return $"{value[..maxLength]}...";
+    }
+}

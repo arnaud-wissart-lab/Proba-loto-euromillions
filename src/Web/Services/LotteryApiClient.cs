@@ -1,13 +1,18 @@
 using System.Net.Http.Json;
+using Microsoft.Extensions.Options;
 using Web.Models;
+using Web.Options;
 
 namespace Web.Services;
 
 public sealed class LotteryApiClient(
     IHttpClientFactory httpClientFactory,
+    IOptions<AdminOptions> adminOptions,
     ILogger<LotteryApiClient> logger)
 {
     public const string ClientName = "lottery-api";
+    private const string AdminApiKeyHeaderName = "X-Api-Key";
+    private readonly AdminOptions _adminOptions = adminOptions.Value;
 
     public async Task<ApiStatusResponse?> GetStatusAsync(CancellationToken cancellationToken)
     {
@@ -47,7 +52,7 @@ public sealed class LotteryApiClient(
 
         try
         {
-            var response = await client.PostAsJsonAsync("/api/grids/generate", request, cancellationToken);
+            using var response = await client.PostAsJsonAsync("/api/grids/generate", request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning(
@@ -73,7 +78,7 @@ public sealed class LotteryApiClient(
 
         try
         {
-            var response = await client.PostAsJsonAsync("/api/subscriptions", request, cancellationToken);
+            using var response = await client.PostAsJsonAsync("/api/subscriptions", request, cancellationToken);
             return response.StatusCode == System.Net.HttpStatusCode.Accepted;
         }
         catch (Exception exception)
@@ -117,5 +122,76 @@ public sealed class LotteryApiClient(
             logger.LogWarning(exception, "Impossible de desinscrire l'abonnement.");
             return null;
         }
+    }
+
+    public async Task<IReadOnlyCollection<ApiAdminSyncRunResponse>?> GetAdminSyncRunsAsync(
+        int take,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/admin/sync-runs?take={Math.Clamp(take, 1, 200)}");
+        if (!TryAddAdminApiKey(request))
+        {
+            return null;
+        }
+
+        var client = httpClientFactory.CreateClient(ClientName);
+
+        try
+        {
+            using var response = await client.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Lecture SyncRuns admin refusee. status={StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<IReadOnlyCollection<ApiAdminSyncRunResponse>>(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Impossible de recuperer les SyncRuns admin.");
+            return null;
+        }
+    }
+
+    public async Task<ApiSyncExecutionSummaryResponse?> TriggerAdminSyncAsync(CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/sync");
+        if (!TryAddAdminApiKey(request))
+        {
+            return null;
+        }
+
+        var client = httpClientFactory.CreateClient(ClientName);
+
+        try
+        {
+            using var response = await client.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogWarning("Declenchement sync admin refuse. status={StatusCode}", response.StatusCode);
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<ApiSyncExecutionSummaryResponse>(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Impossible de declencher une synchronisation admin.");
+            return null;
+        }
+    }
+
+    private bool TryAddAdminApiKey(HttpRequestMessage request)
+    {
+        if (string.IsNullOrWhiteSpace(_adminOptions.ApiKey))
+        {
+            logger.LogWarning("Aucune Admin:ApiKey configuree cote Web.");
+            return false;
+        }
+
+        request.Headers.Remove(AdminApiKeyHeaderName);
+        request.Headers.Add(AdminApiKeyHeaderName, _adminOptions.ApiKey);
+        return true;
     }
 }

@@ -45,4 +45,24 @@ public sealed class WeightedNumberSamplerTests
 
         Assert.True(selectedOneCount > 250);
     }
+
+    [Fact]
+    public void SampleWithoutReplacementShouldFallbackToUniformWhenWeightsAreInvalid()
+    {
+        var candidates = new[] { 1, 2, 3, 4, 5 };
+        var weights = new Dictionary<int, double>
+        {
+            [1] = -1,
+            [2] = 0,
+            [3] = double.NaN,
+            [4] = double.NegativeInfinity,
+            [5] = 0
+        };
+
+        var sample = WeightedNumberSampler.SampleWithoutReplacement(candidates, weights, 3, new Random(7));
+
+        Assert.Equal(3, sample.Length);
+        Assert.Equal(3, sample.Distinct().Count());
+        Assert.All(sample, number => Assert.Contains(number, candidates));
+    }
 }
