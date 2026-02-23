@@ -1,6 +1,33 @@
 # Probabilités Loto & EuroMillions
 
+[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+[![Licence: MIT](https://img.shields.io/badge/Licence-MIT-green.svg)](LICENSE)
+
 Application web informative et statistique autour des tirages Loto et EuroMillions, construite en .NET 10 avec une architecture `web + api + worker + postgres`.
+
+## Ce que ça démontre
+- Ingestion robuste des archives FDJ via parsing HTML/CSV/Excel tolérant aux variations.
+- Worker Quartz dédié pour synchronisation planifiée et traitements asynchrones.
+- API ASP.NET Core pour statistiques, génération de grilles et administration sécurisée.
+- Interface Blazor Server orientée usage (stats, génération, administration).
+- Observabilité production-ready: logs structurés Serilog, traces + métriques OpenTelemetry, health checks.
+- Tests unitaires + tests d'intégration `API + PostgreSQL` avec Testcontainers.
+- Exécution locale et déploiement simplifiés via Docker Compose et orchestration .NET Aspire.
+
+## Démo
+Il n'existe pas de démo publique hébergée en permanence à ce stade.
+
+Pour lancer une démo locale complète, utilisez Docker Compose (voir [Démarrage rapide](#démarrage-rapide-docker-compose-recommandé)):
+
+```powershell
+docker compose up --build
+```
+
+## Captures
+> Placeholders (captures non versionnées dans ce dépôt)
+
+![Statistiques - placeholder](docs/screenshots/stats.png)
+![Administration - placeholder](docs/screenshots/admin.png)
 
 ## Objectif du projet
 - fournir un socle auditable et exploitable en production;
