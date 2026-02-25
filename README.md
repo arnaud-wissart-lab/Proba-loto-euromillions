@@ -124,18 +124,27 @@ Secrets SSH requis (niveau organisation):
 - `SSH_PRIVATE_KEY`
 - `SSH_PORT` (optionnel, `22` par defaut)
 
-Secrets applicatifs a definir avant exposition publique (les valeurs par defaut du compose sont des placeholders):
+Configuration applicative sur la machine cible (`/home/arnaud/apps/proba-loto-euromillions/.env`):
+- modele versionne: `deploy/home.env.example`
+- le script de deploiement charge explicitement ce fichier s'il existe
+
+Variables a definir avant exposition publique (les valeurs par defaut du compose sont des placeholders):
 - `POSTGRES_PASSWORD`
 - `ADMIN_API_KEY`
 - `ADMIN_WEB_USERNAME`
 - `ADMIN_WEB_PASSWORD`
 - `SUBSCRIPTIONS_TOKEN_SECRET`
-- `SMTP_*`
+- `SMTP_*` (obligatoire pour l'abonnement e-mail)
 - `PUBLIC_BASE_URL`
 
 Exposition home:
 - Web: `http://<hote>:8083`
 - Healthcheck: `http://127.0.0.1:8083/health`
+
+Important:
+- endpoint healthcheck Web: `/health`
+- port interne du conteneur Web: `8080` (publie en home via `8083:8080`)
+- sans SMTP valide, `POST /api/subscriptions` echoue et l'abonnement ne peut pas etre enregistre.
 
 ## Exposition publique (NPM)
 Pour publier l'application derrière Nginx Proxy Manager, créer un **Proxy Host** avec les paramètres suivants:

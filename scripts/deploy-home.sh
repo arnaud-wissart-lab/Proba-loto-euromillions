@@ -79,12 +79,16 @@ require_cmd() {
 
 dump_diagnostics() {
   log "Etat compose:"
-  "${compose_cmd[@]}" -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE_PATH" ps || true
+  compose ps || true
 
   for service_name in web api worker postgres; do
     log "Derniers logs du service ${service_name}:"
-    "${compose_cmd[@]}" -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE_PATH" logs --no-color --tail 120 "$service_name" || true
+    compose logs --no-color --tail 120 "$service_name" || true
   done
+}
+
+compose() {
+  "${compose_cmd[@]}" "${compose_base_args[@]}" "$@"
 }
 
 git_with_auth() {
@@ -106,6 +110,7 @@ REPO_URL="https://github.com/${REPO_SLUG}.git"
 APP_DIR="/home/arnaud/apps/proba-loto-euromillions"
 COMPOSE_FILE="deploy/home.compose.yml"
 COMPOSE_PROJECT="probaloto-home"
+ENV_FILE_PATH="${APP_DIR}/.env"
 HEALTH_URL="http://127.0.0.1:8083/health"
 HEALTH_TIMEOUT_SECONDS=300
 HEALTH_POLL_SECONDS=5
@@ -126,6 +131,8 @@ else
   error "docker compose est introuvable (plugin Docker ou binaire docker-compose requis)."
   exit 1
 fi
+
+compose_base_args=(-p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE_PATH")
 
 log "Preparation du dossier ${APP_DIR}"
 mkdir -p "$APP_PARENT_DIR"
@@ -178,13 +185,21 @@ if [ ! -f "$COMPOSE_FILE_PATH" ]; then
   exit 1
 fi
 
+if [ -f "$ENV_FILE_PATH" ]; then
+  compose_base_args+=(--env-file "$ENV_FILE_PATH")
+  log "Fichier .env detecte: ${ENV_FILE_PATH}"
+else
+  log "Fichier .env absent (${ENV_FILE_PATH}). Les valeurs par defaut du compose seront utilisees."
+  log "Important: sans SMTP configure, l'abonnement e-mail echouera."
+fi
+
 if docker ps -a --format '{{.Names}}' | grep -Fxq 'loto'; then
   log "Suppression du conteneur historique loto pour liberer le port 8083."
   docker rm -f loto >/dev/null || true
 fi
 
 log "Build et demarrage de la stack home via docker compose"
-"${compose_cmd[@]}" -p "$COMPOSE_PROJECT" -f "$COMPOSE_FILE_PATH" up -d --build --remove-orphans
+compose up -d --build --remove-orphans
 
 max_attempts=$((HEALTH_TIMEOUT_SECONDS / HEALTH_POLL_SECONDS))
 if [ "$max_attempts" -lt 1 ]; then
