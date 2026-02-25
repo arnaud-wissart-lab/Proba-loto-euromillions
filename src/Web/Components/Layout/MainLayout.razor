@@ -22,7 +22,7 @@
                                Color="Color.Inherit"
                                Href="@link.Href"
                                StartIcon="@link.Icon"
-                               Class="nav-button">
+                               Class="@($"nav-button {link.ToneClass}")">
                         @link.Label
                     </MudButton>
                 }
@@ -58,10 +58,6 @@
         </MudHidden>
     </MudAppBar>
 
-    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Icon="@Icons.Material.Filled.WarningAmber" Class="layout-disclaimer-top">
-        Jeu responsable: fixez un budget, limitez le temps de jeu et ne jouez pas pour vous refaire.
-    </MudAlert>
-
     <MudMainContent Class="main-content">
         @Body
     </MudMainContent>
@@ -70,11 +66,11 @@
 @code {
     private readonly IReadOnlyCollection<NavLinkDefinition> _navigationLinks =
     [
-        new("/", "Accueil", Icons.Material.Filled.Home),
-        new("/grilles", "Générer", Icons.Material.Filled.Casino),
-        new("/statistiques", "Statistiques", Icons.Material.Filled.BarChart),
-        new("/abonnement", "Abonnement", Icons.Material.Filled.MarkEmailRead),
-        new("/admin", "Admin", Icons.Material.Filled.AdminPanelSettings)
+        new("/", "Accueil", Icons.Material.Filled.Home, "tone-home"),
+        new("/grilles", "Générer", Icons.Material.Filled.Casino, "tone-grids"),
+        new("/statistiques", "Statistiques", Icons.Material.Filled.BarChart, "tone-stats"),
+        new("/abonnement", "Abonnement", Icons.Material.Filled.MarkEmailRead, "tone-subscribe"),
+        new("/admin", "Admin", Icons.Material.Filled.AdminPanelSettings, "tone-admin")
     ];
 
     private static readonly MudTheme AppTheme = BuildTheme();
@@ -136,5 +132,5 @@
             }
         };
 
-    private sealed record NavLinkDefinition(string Href, string Label, string Icon);
+    private sealed record NavLinkDefinition(string Href, string Label, string Icon, string ToneClass);
 }

@@ -18,12 +18,8 @@
                 <MudText Typo="Typo.caption">Jeu responsable</MudText>
             </MudPaper>
         </MudStack>
-        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mt-4">
-            Les jeux d'argent comportent des risques : endettement, isolement, dépendance.
-            Fixez vos limites et jouez avec modération.
-        </MudAlert>
-        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-2">
-            Ce site ne prédit aucun tirage. Les contenus sont purement informatifs et statistiques.
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-3">
+            Site informatif uniquement. Jouez de manière responsable et ne jouez pas pour vous refaire.
         </MudAlert>
 
         <MudStack Row="true" Spacing="2" Class="mt-4 hero-actions">
@@ -73,9 +69,6 @@
         </MudItem>
     </MudGrid>
 
-    <MudPaper Elevation="0" Class="mt-4 disclaimer-panel">
-        <MudText Typo="Typo.body2">@_status.Disclaimer</MudText>
-    </MudPaper>
 </MudContainer>
 
 @code {
