@@ -18,7 +18,11 @@
             <MudStack Row="true" Spacing="1" Class="nav-actions">
                 @foreach (var link in _navigationLinks)
                 {
-                    <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="@link.Href" Class="nav-button">
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Inherit"
+                               Href="@link.Href"
+                               StartIcon="@link.Icon"
+                               Class="nav-button">
                         @link.Label
                     </MudButton>
                 }
@@ -29,15 +33,13 @@
             <MudMenu Icon="@Icons.Material.Filled.Menu">
                 @foreach (var link in _navigationLinks)
                 {
-                    <MudMenuItem Href="@link.Href">@link.Label</MudMenuItem>
+                    <MudMenuItem Href="@link.Href" Icon="@link.Icon">@link.Label</MudMenuItem>
                 }
             </MudMenu>
         </MudHidden>
 
         <MudHidden Breakpoint="Breakpoint.MdAndDown">
             <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="theme-toggle">
-                <MudIcon Icon="@(_isDarkMode ? Icons.Material.Filled.Brightness4 : Icons.Material.Filled.Brightness7)"
-                         Class="theme-toggle-icon" />
                 <MudSwitch T="bool"
                            @bind-Value="_isDarkMode"
                            Color="Color.Warning"
@@ -47,36 +49,32 @@
         </MudHidden>
 
         <MudHidden Breakpoint="Breakpoint.LgAndUp">
-            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.Brightness4 : Icons.Material.Filled.Brightness7)"
-                           Color="Color.Inherit"
-                           Size="Size.Medium"
-                           OnClick="@ToggleThemeMode" />
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Inherit"
+                       StartIcon="@(_isDarkMode ? Icons.Material.Filled.Brightness4 : Icons.Material.Filled.Brightness7)"
+                       OnClick="@ToggleThemeMode">
+                @ThemeModeLabel
+            </MudButton>
         </MudHidden>
     </MudAppBar>
 
-    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="layout-disclaimer-top">
-        Mode détente activé: couleurs, animations et statistiques. Les tirages restent purement équiprobables.
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Icon="@Icons.Material.Filled.WarningAmber" Class="layout-disclaimer-top">
+        Jeu responsable: fixez un budget, limitez le temps de jeu et ne jouez pas pour vous refaire.
     </MudAlert>
 
     <MudMainContent Class="main-content">
         @Body
     </MudMainContent>
-
-    <MudPaper Elevation="0" Class="layout-disclaimer-bottom">
-        <MudText Typo="Typo.caption">
-            Jeu responsable: les jeux d'argent comportent des risques (endettement, isolement, dépendance).
-        </MudText>
-    </MudPaper>
 </MudLayout>
 
 @code {
     private readonly IReadOnlyCollection<NavLinkDefinition> _navigationLinks =
     [
-        new("/", "Accueil"),
-        new("/grilles", "Générer"),
-        new("/statistiques", "Statistiques"),
-        new("/abonnement", "Abonnement"),
-        new("/admin", "Admin")
+        new("/", "Accueil", Icons.Material.Filled.Home),
+        new("/grilles", "Générer", Icons.Material.Filled.Casino),
+        new("/statistiques", "Statistiques", Icons.Material.Filled.BarChart),
+        new("/abonnement", "Abonnement", Icons.Material.Filled.MarkEmailRead),
+        new("/admin", "Admin", Icons.Material.Filled.AdminPanelSettings)
     ];
 
     private static readonly MudTheme AppTheme = BuildTheme();
@@ -138,5 +136,5 @@
             }
         };
 
-    private sealed record NavLinkDefinition(string Href, string Label);
+    private sealed record NavLinkDefinition(string Href, string Label, string Icon);
 }
