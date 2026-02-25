@@ -1,12 +1,11 @@
 @inherits LayoutComponentBase
-@using Web.Theming
 
-<MudThemeProvider Theme="@_activeTheme" />
+<MudThemeProvider Theme="@AppTheme" IsDarkMode="@_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
+<MudLayout Class="@($"app-shell {(_isDarkMode ? "mode-dark" : "mode-light")}")">
     <MudAppBar Elevation="0" Dense="true" Class="main-appbar">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="brand-stack">
             <MudIcon Icon="@Icons.Material.Filled.QueryStats" Class="brand-icon" />
@@ -36,26 +35,27 @@
         </MudHidden>
 
         <MudHidden Breakpoint="Breakpoint.MdAndDown">
-            <MudMenu Label="@($"Thème : {AppThemeCatalog.ResolveLabel(_selectedThemeKey)}")" Class="theme-menu">
-                @foreach (var option in AppThemeCatalog.All)
-                {
-                    <MudMenuItem OnClick="@(() => SetTheme(option.Key))">@option.Label</MudMenuItem>
-                }
-            </MudMenu>
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="theme-toggle">
+                <MudIcon Icon="@(_isDarkMode ? Icons.Material.Filled.Brightness4 : Icons.Material.Filled.Brightness7)"
+                         Class="theme-toggle-icon" />
+                <MudSwitch T="bool"
+                           @bind-Value="_isDarkMode"
+                           Color="Color.Warning"
+                           Label="@ThemeModeLabel"
+                           Class="theme-mode-switch" />
+            </MudStack>
         </MudHidden>
 
         <MudHidden Breakpoint="Breakpoint.LgAndUp">
-            <MudMenu Icon="@Icons.Material.Filled.Palette">
-                @foreach (var option in AppThemeCatalog.All)
-                {
-                    <MudMenuItem OnClick="@(() => SetTheme(option.Key))">@option.Label</MudMenuItem>
-                }
-            </MudMenu>
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.Brightness4 : Icons.Material.Filled.Brightness7)"
+                           Color="Color.Inherit"
+                           Size="Size.Medium"
+                           OnClick="@ToggleThemeMode" />
         </MudHidden>
     </MudAppBar>
 
-    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="layout-disclaimer-top">
-        Chaque combinaison est équiprobable. Les pondérations restent des repères statistiques.
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="layout-disclaimer-top">
+        Mode détente activé: couleurs, animations et statistiques. Les tirages restent purement équiprobables.
     </MudAlert>
 
     <MudMainContent Class="main-content">
@@ -64,7 +64,7 @@
 
     <MudPaper Elevation="0" Class="layout-disclaimer-bottom">
         <MudText Typo="Typo.caption">
-            Jeu responsable : les jeux d'argent comportent des risques (endettement, isolement, dépendance).
+            Jeu responsable: les jeux d'argent comportent des risques (endettement, isolement, dépendance).
         </MudText>
     </MudPaper>
 </MudLayout>
@@ -79,14 +79,64 @@
         new("/admin", "Admin")
     ];
 
-    private string _selectedThemeKey = AppThemeCatalog.DefaultThemeKey;
-    private MudTheme _activeTheme = AppThemeCatalog.ResolveTheme(AppThemeCatalog.DefaultThemeKey);
+    private static readonly MudTheme AppTheme = BuildTheme();
+    private bool _isDarkMode;
 
-    private void SetTheme(string themeKey)
+    private string ThemeModeLabel => _isDarkMode ? "Nuit" : "Jour";
+
+    private void ToggleThemeMode()
     {
-        _selectedThemeKey = themeKey;
-        _activeTheme = AppThemeCatalog.ResolveTheme(themeKey);
+        _isDarkMode = !_isDarkMode;
     }
+
+    private static MudTheme BuildTheme() =>
+        new()
+        {
+            PaletteLight = new PaletteLight
+            {
+                Primary = "#D14F2A",
+                Secondary = "#1D7AFC",
+                Info = "#11A39A",
+                Success = "#1D9B4F",
+                Warning = "#E6A317",
+                Error = "#D94343",
+                Background = "#FFF7E8",
+                Surface = "#FFFFFF",
+                AppbarBackground = "rgba(255, 255, 255, 0.9)",
+                AppbarText = "#2D1F15",
+                TextPrimary = "#2D1F15",
+                TextSecondary = "#5C4D42",
+                DrawerBackground = "#FFFFFF",
+                DrawerText = "#2D1F15",
+                DrawerIcon = "#5C4D42",
+                LinesDefault = "#E8D7C2",
+                TableLines = "#E8D7C2"
+            },
+            PaletteDark = new PaletteDark
+            {
+                Primary = "#FF8A4D",
+                Secondary = "#6EA8FF",
+                Info = "#42D1C5",
+                Success = "#59C67A",
+                Warning = "#FFD166",
+                Error = "#FF7D7D",
+                Background = "#151A2F",
+                Surface = "#1D2440",
+                AppbarBackground = "rgba(18, 24, 46, 0.9)",
+                AppbarText = "#F6EDE3",
+                TextPrimary = "#F6EDE3",
+                TextSecondary = "#D6C7B8",
+                DrawerBackground = "#1D2440",
+                DrawerText = "#F6EDE3",
+                DrawerIcon = "#D6C7B8",
+                LinesDefault = "#2E3555",
+                TableLines = "#2E3555"
+            },
+            LayoutProperties = new LayoutProperties
+            {
+                DefaultBorderRadius = "14px"
+            }
+        };
 
     private sealed record NavLinkDefinition(string Href, string Label);
 }

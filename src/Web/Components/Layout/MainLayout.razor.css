@@ -5,3 +5,15 @@
 .main-content {
     min-height: calc(100vh - 156px);
 }
+
+.theme-toggle {
+    margin-left: 0.35rem;
+}
+
+.theme-toggle-icon {
+    color: var(--theme-accent);
+}
+
+.theme-mode-switch {
+    margin-left: 0.15rem;
+}

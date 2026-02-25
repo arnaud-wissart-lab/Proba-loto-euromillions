@@ -59,6 +59,16 @@
                    Color="Color.Primary"
                    @bind-Value="_requestedGridCount" />
 
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mt-2 wrap-stack">
+            <MudSwitch T="bool"
+                       @bind-Value="_enableDrawAnimation"
+                       Color="Color.Info"
+                       Label="Animation de tirage" />
+            <MudText Typo="Typo.caption">
+                Désactivez cette option pour obtenir uniquement les chiffres, sans animation.
+            </MudText>
+        </MudStack>
+
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    Disabled="@_isLoading"
@@ -77,6 +87,33 @@
         <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-4">
             @_errorMessage
         </MudAlert>
+    }
+
+    @if (_showDrawAnimation)
+    {
+        <MudPaper Elevation="1" Class="draw-sim-card mt-4">
+            <MudText Typo="Typo.h6">Tirage en cours...</MudText>
+            <MudText Typo="Typo.caption">
+                Simulation visuelle (@_animatingGame). Le résultat arrive juste après.
+            </MudText>
+
+            <div class="draw-machine mt-3">
+                <div class="draw-machine-glow"></div>
+                <div class="ball-row ball-row-main">
+                    @foreach (var number in _animationMainNumbers)
+                    {
+                        <span class="number-ball number-ball-main number-ball-animated">@number</span>
+                    }
+                </div>
+
+                <div class="ball-row ball-row-bonus mt-2">
+                    @foreach (var number in _animationBonusNumbers)
+                    {
+                        <span class="number-ball number-ball-bonus number-ball-animated">@number</span>
+                    }
+                </div>
+            </div>
+        </MudPaper>
     }
 
     @if (_result is not null)
@@ -109,20 +146,20 @@
                         </MudStack>
 
                         <MudText Typo="Typo.caption" Class="mt-2">Numéros principaux</MudText>
-                        <MudStack Row="true" Spacing="1" Class="mt-1 wrap-stack">
-                            @foreach (var number in entry.Grid.MainNumbers)
+                        <div class="ball-row ball-row-main mt-1">
+                            @foreach (var number in entry.Grid.MainNumbers.OrderBy(value => value))
                             {
-                                <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small">@number</MudChip>
+                                <span class="number-ball number-ball-main">@number</span>
                             }
-                        </MudStack>
+                        </div>
 
                         <MudText Typo="Typo.caption" Class="mt-2">Bonus</MudText>
-                        <MudStack Row="true" Spacing="1" Class="mt-1 wrap-stack">
-                            @foreach (var number in entry.Grid.BonusNumbers)
+                        <div class="ball-row ball-row-bonus mt-1">
+                            @foreach (var number in entry.Grid.BonusNumbers.OrderBy(value => value))
                             {
-                                <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small">@number</MudChip>
+                                <span class="number-ball number-ball-bonus">@number</span>
                             }
-                        </MudStack>
+                        </div>
 
                         <MudText Typo="Typo.caption" Class="mt-3">
                             Top numéros (pondération) : M[@string.Join(", ", entry.Grid.TopMainNumbers)] B[@string.Join(", ", entry.Grid.TopBonusNumbers)]
@@ -142,14 +179,22 @@
     private string _selectedGame = "Loto";
     private int _requestedGridCount = 5;
     private string _selectedStrategy = "uniform";
+    private bool _enableDrawAnimation = true;
     private bool _isLoading;
+    private bool _showDrawAnimation;
     private string? _errorMessage;
+    private string _animatingGame = "Loto";
+    private IReadOnlyList<int> _animationMainNumbers = [];
+    private IReadOnlyList<int> _animationBonusNumbers = [];
     private ApiGenerateGridsResponse? _result;
 
     private async Task GenerateAsync()
     {
         _isLoading = true;
         _errorMessage = null;
+        _result = null;
+        _showDrawAnimation = false;
+        _animatingGame = _selectedGame;
 
         try
         {
@@ -160,11 +205,19 @@
                 Strategy = _selectedStrategy
             };
 
-            _result = await LotteryApiClient.GenerateGridsAsync(request, CancellationToken.None);
-            if (_result is null)
+            var generated = await LotteryApiClient.GenerateGridsAsync(request, CancellationToken.None);
+            if (generated is null)
             {
                 _errorMessage = "Génération indisponible. Vérifiez la connectivité API.";
+                return;
             }
+
+            if (_enableDrawAnimation)
+            {
+                await RunDrawAnimationAsync(_selectedGame, generated);
+            }
+
+            _result = generated;
         }
         catch (Exception exception)
         {
@@ -174,6 +227,7 @@
         finally
         {
             _isLoading = false;
+            _showDrawAnimation = false;
         }
     }
 
@@ -193,4 +247,45 @@
             "recency" => "C) Pondéré par récence",
             _ => strategy
         };
+
+    private async Task RunDrawAnimationAsync(string game, ApiGenerateGridsResponse generated)
+    {
+        var firstGrid = generated.Grids.FirstOrDefault();
+        if (firstGrid is null)
+        {
+            return;
+        }
+
+        _showDrawAnimation = true;
+        var (mainMax, bonusMax, bonusCount) = GetBallRanges(game);
+
+        for (var index = 0; index < 24; index++)
+        {
+            _animationMainNumbers = BuildUniqueSortedNumbers(5, mainMax);
+            _animationBonusNumbers = BuildUniqueSortedNumbers(bonusCount, bonusMax);
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(index < 18 ? 75 : 110);
+        }
+
+        _animationMainNumbers = firstGrid.MainNumbers.OrderBy(value => value).ToArray();
+        _animationBonusNumbers = firstGrid.BonusNumbers.OrderBy(value => value).ToArray();
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(500);
+    }
+
+    private static (int MainMax, int BonusMax, int BonusCount) GetBallRanges(string game) =>
+        game.Equals("EuroMillions", StringComparison.OrdinalIgnoreCase)
+            ? (50, 12, 2)
+            : (49, 10, 1);
+
+    private static IReadOnlyList<int> BuildUniqueSortedNumbers(int count, int maxValue)
+    {
+        var values = new HashSet<int>();
+        while (values.Count < count)
+        {
+            values.Add(Random.Shared.Next(1, maxValue + 1));
+        }
+
+        return values.OrderBy(value => value).ToArray();
+    }
 }
