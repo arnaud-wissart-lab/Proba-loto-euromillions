@@ -275,7 +275,11 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
                 }
             }
         }
-        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException or NotSupportedException)
+        catch (Exception exception) when (
+            exception is InvalidOperationException
+            or ArgumentException
+            or NotSupportedException
+            or ExcelDataReader.Exceptions.HeaderException)
         {
             logger.LogWarning(
                 exception,

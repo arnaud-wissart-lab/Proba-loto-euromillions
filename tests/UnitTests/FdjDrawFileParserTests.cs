@@ -72,6 +72,21 @@ date_de_tirage;boule_1;boule_2;boule_3;boule_4;boule_5;numero_chance
         Assert.Equal(new DateOnly(2026, 2, 20), draw.DrawDate);
     }
 
+    [Fact]
+    public void ParseArchiveEntryShouldReturnEmptyWhenPayloadIsUnknownBinary()
+    {
+        var parser = CreateParser();
+        var payload = new byte[] { 0x10, 0x22, 0x7F, 0x09, 0x31, 0xFF, 0x00, 0x45 };
+
+        var draws = parser.ParseArchiveEntry(
+            LotteryGame.EuroMillions,
+            "archive.bin",
+            "unknown.bin",
+            payload);
+
+        Assert.Empty(draws);
+    }
+
     private static FdjDrawFileParser CreateParser() =>
         new(NullLogger<FdjDrawFileParser>.Instance);
 }
