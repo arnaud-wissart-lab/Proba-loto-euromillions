@@ -38,24 +38,15 @@
             </MudMenu>
         </MudHidden>
 
-        <MudHidden Breakpoint="Breakpoint.MdAndDown">
-            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="theme-toggle">
-                <MudSwitch T="bool"
-                           @bind-Value="_isDarkMode"
-                           Color="Color.Warning"
-                           Label="@ThemeModeLabel"
-                           Class="theme-mode-switch" />
-            </MudStack>
-        </MudHidden>
-
-        <MudHidden Breakpoint="Breakpoint.LgAndUp">
-            <MudButton Variant="Variant.Text"
-                       Color="Color.Inherit"
-                       StartIcon="@(_isDarkMode ? Icons.Material.Filled.Brightness4 : Icons.Material.Filled.Brightness7)"
-                       OnClick="@ToggleThemeMode">
-                @ThemeModeLabel
-            </MudButton>
-        </MudHidden>
+        <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Class="theme-toggle">
+            <MudTooltip Text="@ThemeModeTooltip" Placement="Placement.Bottom">
+                <MudIconButton Icon="@ThemeToggleIcon"
+                               Color="Color.Inherit"
+                               Class="@ThemeToggleClass"
+                               OnClick="@ToggleThemeMode" />
+            </MudTooltip>
+            <MudText Typo="Typo.body2" Class="theme-mode-label">@ThemeModeLabel</MudText>
+        </MudStack>
     </MudAppBar>
 
     <MudMainContent Class="main-content">
@@ -77,6 +68,9 @@
     private bool _isDarkMode;
 
     private string ThemeModeLabel => _isDarkMode ? "Nuit" : "Jour";
+    private string ThemeModeTooltip => _isDarkMode ? "Passer en mode Jour" : "Passer en mode Nuit";
+    private string ThemeToggleIcon => _isDarkMode ? Icons.Material.Filled.Bedtime : Icons.Material.Filled.WbSunny;
+    private string ThemeToggleClass => _isDarkMode ? "theme-icon-button is-night" : "theme-icon-button is-day";
 
     private void ToggleThemeMode()
     {

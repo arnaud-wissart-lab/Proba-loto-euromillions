@@ -134,15 +134,26 @@ h6,
     border-radius: 999px !important;
     color: var(--text-main) !important;
     transition: transform 0.18s ease, background-color 0.2s ease;
+    font-size: 0.9rem !important;
+    letter-spacing: 0.2px;
 }
 
-.nav-button .mud-icon-root {
-    margin-right: 0.35rem;
-    font-size: 1rem;
+.nav-button .mud-button-start-icon {
+    margin-inline: 0 0.45rem;
+}
+
+.nav-button .mud-button-start-icon .mud-icon-root {
+    font-size: 1.15rem;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 999px;
-    padding: 0.28rem;
+    padding: 0.34rem;
     background: color-mix(in srgb, var(--theme-accent-soft), white 35%);
     color: var(--theme-accent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .nav-button:hover {
@@ -150,54 +161,94 @@ h6,
     background: color-mix(in srgb, var(--theme-accent-soft), transparent 35%);
 }
 
-.nav-button.tone-home .mud-icon-root {
+.nav-button.tone-home .mud-button-start-icon .mud-icon-root {
     color: #2563eb;
     background: #dbeafe;
 }
 
-.nav-button.tone-grids .mud-icon-root {
+.nav-button.tone-grids .mud-button-start-icon .mud-icon-root {
     color: #d97706;
     background: #fef3c7;
 }
 
-.nav-button.tone-stats .mud-icon-root {
+.nav-button.tone-stats .mud-button-start-icon .mud-icon-root {
     color: #0f766e;
     background: #ccfbf1;
 }
 
-.nav-button.tone-subscribe .mud-icon-root {
+.nav-button.tone-subscribe .mud-button-start-icon .mud-icon-root {
     color: #4f46e5;
     background: #e0e7ff;
 }
 
-.nav-button.tone-admin .mud-icon-root {
+.nav-button.tone-admin .mud-button-start-icon .mud-icon-root {
     color: #be185d;
     background: #fce7f3;
 }
 
-.app-shell.mode-dark .nav-button.tone-home .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-home .mud-button-start-icon .mud-icon-root {
     color: #93c5fd;
     background: #1d4f92;
 }
 
-.app-shell.mode-dark .nav-button.tone-grids .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-grids .mud-button-start-icon .mud-icon-root {
     color: #fdba74;
     background: #7c4515;
 }
 
-.app-shell.mode-dark .nav-button.tone-stats .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-stats .mud-button-start-icon .mud-icon-root {
     color: #5eead4;
     background: #125f5a;
 }
 
-.app-shell.mode-dark .nav-button.tone-subscribe .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-subscribe .mud-button-start-icon .mud-icon-root {
     color: #c4b5fd;
     background: #4338ca;
 }
 
-.app-shell.mode-dark .nav-button.tone-admin .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-admin .mud-button-start-icon .mud-icon-root {
     color: #f9a8d4;
     background: #7a1f4f;
+}
+
+.theme-toggle {
+    margin-left: 0.35rem;
+}
+
+.theme-icon-button {
+    border-radius: 999px !important;
+    border: 1px solid var(--border-subtle) !important;
+    width: 2.15rem;
+    height: 2.15rem;
+    transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-icon-button .mud-icon-root {
+    font-size: 1.18rem;
+}
+
+.theme-icon-button.is-day {
+    color: #a65100 !important;
+    background: linear-gradient(140deg, #ffe179 0%, #ffc145 60%, #ffac2d 100%);
+    box-shadow: 0 8px 18px rgba(255, 184, 64, 0.34);
+    border-color: rgba(210, 123, 25, 0.42) !important;
+}
+
+.theme-icon-button.is-night {
+    color: #d7e6ff !important;
+    background: linear-gradient(140deg, #647dee 0%, #4f63d9 55%, #3948b8 100%);
+    box-shadow: 0 8px 18px rgba(66, 97, 212, 0.34);
+    border-color: rgba(84, 112, 221, 0.58) !important;
+}
+
+.theme-icon-button:hover {
+    transform: translateY(-1px);
+}
+
+.theme-mode-label {
+    font-weight: 700;
+    color: var(--text-main);
+    min-width: 2.6rem;
 }
 
 .main-content {
@@ -463,6 +514,20 @@ code {
 @media (max-width: 600px) {
     .main-appbar {
         padding: 0.2rem 0.25rem;
+    }
+
+    .nav-button {
+        font-size: 0.86rem !important;
+    }
+
+    .nav-button .mud-button-start-icon .mud-icon-root {
+        width: 1.6rem;
+        height: 1.6rem;
+        font-size: 1.04rem;
+    }
+
+    .theme-mode-label {
+        display: none;
     }
 
     .hero-actions .mud-button-root {
