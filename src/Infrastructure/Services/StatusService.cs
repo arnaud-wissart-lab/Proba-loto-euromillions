@@ -37,7 +37,7 @@ public sealed class StatusService(
         var referenceDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
         logger.LogInformation(
-            "Statut calcule: sync={LastSyncAt}, loto={LotoDrawCount}, euro={EuroDrawCount}",
+            "Statut calculé : sync={LastSyncAt}, loto={LotoDrawCount}, euro={EuroDrawCount}",
             effectiveLastSyncAt,
             lotoData?.DrawsCount ?? 0,
             euroData?.DrawsCount ?? 0);
@@ -52,7 +52,7 @@ public sealed class StatusService(
                 euroData?.DrawsCount ?? 0,
                 euroData?.LastDrawDate,
                 LotteryGameRulesCatalog.GetNextDrawDate(LotteryGame.EuroMillions, referenceDate)),
-            "Chaque combinaison reste equiprobable. Les statistiques de frequences et de recence sont purement informatives.");
+            "Chaque combinaison reste équiprobable. Les statistiques de fréquences et de récence sont purement informatives.");
 
         return status;
     }

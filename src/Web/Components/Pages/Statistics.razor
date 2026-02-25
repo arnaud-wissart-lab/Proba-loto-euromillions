@@ -242,16 +242,16 @@
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Chargement des statistiques en echec.");
+            Logger.LogError(exception, "Chargement des statistiques en échec.");
             _errorMessage = "Erreur inattendue lors du chargement des statistiques.";
         }
     }
 
-    private static string FormatDate(DateOnly? value) => value?.ToString("dd/MM/yyyy") ?? "N/A";
+    private static string FormatDate(DateOnly? value) => value?.ToString("dd/MM/yyyy") ?? "N/D";
 
     private static string FormatDateTime(DateTimeOffset? value) =>
         value is null || value.Value == DateTimeOffset.MinValue
-            ? "N/A"
+            ? "N/D"
             : value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
 
     private static string BuildBarWidth(double frequencyPct) =>

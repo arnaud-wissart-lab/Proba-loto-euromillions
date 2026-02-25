@@ -26,19 +26,22 @@ public sealed class DrawSyncService(
     private static readonly Counter<long> SyncRunsCounter = Meter.CreateCounter<long>(
         "draw_sync_runs_total",
         unit: "{run}",
-        description: "Nombre de synchronisations de tirages executees.");
+        description: "Nombre de synchronisations de tirages exécutées.");
     private static readonly Counter<long> DrawsUpsertedCounter = Meter.CreateCounter<long>(
         "draw_sync_draws_upserted_total",
         unit: "{draw}",
-        description: "Nombre de tirages inseres ou mis a jour.");
+        description: "Nombre de tirages insérés ou mis à jour.");
     private static readonly Histogram<double> SyncDurationSeconds = Meter.CreateHistogram<double>(
         "draw_sync_duration_seconds",
         unit: "s",
-        description: "Duree d'execution d'une synchronisation de tirages.");
+        description: "Durée d'exécution d'une synchronisation de tirages.");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public async Task<SyncExecutionSummaryDto> SyncAllAsync(string trigger, CancellationToken cancellationToken)
     {
+        using var activity = ActivitySource.StartActivity("draws.sync.all", ActivityKind.Internal);
+        activity?.SetTag("draw.trigger", trigger);
+
         var startedAtUtc = DateTimeOffset.UtcNow;
         var gameResults = new List<GameSyncResultDto>(2);
 
@@ -47,12 +50,17 @@ public sealed class DrawSyncService(
             gameResults.Add(await SyncGameAsync(game, trigger, cancellationToken));
         }
 
+        var hasFailures = gameResults.Any(result => result.Status == SyncRunStatus.Fail);
+        activity?.SetTag("draw.game_count", gameResults.Count);
+        activity?.SetTag("draw.failure_count", gameResults.Count(result => result.Status == SyncRunStatus.Fail));
+        activity?.SetStatus(hasFailures ? ActivityStatusCode.Error : ActivityStatusCode.Ok);
+
         return new SyncExecutionSummaryDto(startedAtUtc, DateTimeOffset.UtcNow, gameResults);
     }
 
     public async Task<GameSyncResultDto> SyncGameAsync(LotteryGame game, string trigger, CancellationToken cancellationToken)
     {
-        using var activity = ActivitySource.StartActivity("draws.sync.game", ActivityKind.Internal);
+        using var activity = ActivitySource.StartActivity($"draws.sync.game.{game}", ActivityKind.Internal);
         activity?.SetTag("draw.game", game.ToString());
         activity?.SetTag("draw.trigger", trigger);
 
@@ -78,7 +86,7 @@ public sealed class DrawSyncService(
 
             if (archives.Count == 0)
             {
-                throw new InvalidOperationException($"Aucune archive FDJ trouvee pour {game}.");
+                throw new InvalidOperationException($"Aucune archive FDJ trouvée pour {game}.");
             }
 
             var drawByDate = new Dictionary<DateOnly, (ParsedDraw Draw, string Source)>();
@@ -117,7 +125,7 @@ public sealed class DrawSyncService(
             if (drawByDate.Count == 0)
             {
                 throw new InvalidOperationException(
-                    $"Aucun tirage valide pour {game} apres la date de regle {gameOptions.RuleStartDate:yyyy-MM-dd}.");
+                    $"Aucun tirage valide pour {game} après la date de règle {gameOptions.RuleStartDate:yyyy-MM-dd}.");
             }
 
             var upsertedCount = await UpsertDrawsAsync(game, drawByDate, cancellationToken);
@@ -133,13 +141,18 @@ public sealed class DrawSyncService(
             await dbContext.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation(
-                "Sync {Game} terminee (trigger={Trigger}, archives={ArchiveCount}, upserts={UpsertCount}, lastDrawDate={LastDrawDate}, cache={IsFromCache}).",
+                "Sync {Game} terminée (trigger={Trigger}, archives={ArchiveCount}, upserts={UpsertCount}, lastDrawDate={LastDrawDate}, cache={IsFromCache}).",
                 game,
                 trigger,
                 archives.Count,
                 upsertedCount,
                 lastKnownDrawDate,
                 discovery.IsFromCache);
+
+            activity?.SetTag("draw.archive_count", archives.Count);
+            activity?.SetTag("draw.upserted_count", upsertedCount);
+            activity?.SetTag("draw.cache_used", discovery.IsFromCache);
+            activity?.SetStatus(ActivityStatusCode.Ok);
 
             var successTags = new TagList
             {
@@ -173,7 +186,8 @@ public sealed class DrawSyncService(
             run.Error = exception.ToString();
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            logger.LogError(exception, "Sync {Game} en echec (trigger={Trigger}).", game, trigger);
+            logger.LogError(exception, "Sync {Game} en échec (trigger={Trigger}).", game, trigger);
+            activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
 
             var failureTags = new TagList
             {
@@ -302,7 +316,7 @@ public sealed class DrawSyncService(
         }
         catch (JsonException exception)
         {
-            logger.LogWarning(exception, "Cache d'archives invalide pour DrawSync. Le cache est ignore.");
+            logger.LogWarning(exception, "Cache d'archives invalide pour DrawSync. Le cache est ignoré.");
             return [];
         }
     }

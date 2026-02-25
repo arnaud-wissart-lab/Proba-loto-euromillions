@@ -38,6 +38,18 @@
             </MudItem>
         </MudGrid>
 
+        <MudPaper Elevation="0" Class="strategy-help-card">
+            <MudText Typo="Typo.subtitle2">Comprendre les stratégies proposées</MudText>
+            <ul class="strategy-help-list">
+                <li><strong>A) Aléatoire (uniforme)</strong> : tous les numéros ont le même poids.</li>
+                <li><strong>B) Pondéré par fréquence globale</strong> : les numéros les plus fréquents sont davantage pondérés.</li>
+                <li><strong>C) Pondéré par récence</strong> : les tirages récents pèsent plus que les anciens.</li>
+            </ul>
+            <MudText Typo="Typo.caption">
+                Les pondérations sont informatives : elles ne changent pas l'équiprobabilité théorique des combinaisons.
+            </MudText>
+        </MudPaper>
+
         <MudSlider T="int"
                    Class="mt-3"
                    Min="1"
@@ -72,8 +84,8 @@
         <MudPaper Elevation="0" Class="mt-4 disclaimer-panel">
             <MudText Typo="Typo.body2">@_result.Disclaimer</MudText>
             <MudText Typo="Typo.caption">
-                Généré le @FormatDateTime(_result.GeneratedAt) | Stratégie: @GetStrategyLabel(_result.Strategy)
-                | Combinaisons possibles: @_result.TotalCombinations.ToString("N0")
+                Généré le @FormatDateTime(_result.GeneratedAt) | Stratégie : @GetStrategyLabel(_result.Strategy)
+                | Combinaisons possibles : @_result.TotalCombinations.ToString("N0")
             </MudText>
         </MudPaper>
 
@@ -113,7 +125,7 @@
                         </MudStack>
 
                         <MudText Typo="Typo.caption" Class="mt-3">
-                            Top numéros (pondération): M[@string.Join(", ", entry.Grid.TopMainNumbers)] B[@string.Join(", ", entry.Grid.TopBonusNumbers)]
+                            Top numéros (pondération) : M[@string.Join(", ", entry.Grid.TopMainNumbers)] B[@string.Join(", ", entry.Grid.TopBonusNumbers)]
                         </MudText>
 
                         <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyGridAsync(entry.Grid))" Class="mt-1">
@@ -167,7 +179,7 @@
 
     private async Task CopyGridAsync(ApiGeneratedGridResponse grid)
     {
-        var text = $"Main: {string.Join("-", grid.MainNumbers)} | Bonus: {string.Join("-", grid.BonusNumbers)} | Score: {grid.Score:0.00}/100";
+        var text = $"Principaux : {string.Join("-", grid.MainNumbers)} | Bonus : {string.Join("-", grid.BonusNumbers)} | Score : {grid.Score:0.00}/100";
         await Js.InvokeVoidAsync("navigator.clipboard.writeText", text);
     }
 

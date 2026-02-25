@@ -35,7 +35,7 @@ public static class LotteryGameRulesCatalog
         {
             LotteryGame.Loto => LotoRules,
             LotteryGame.EuroMillions => EuroMillionsRules,
-            _ => throw new ArgumentOutOfRangeException(nameof(game), game, "Jeu non supporte.")
+            _ => throw new ArgumentOutOfRangeException(nameof(game), game, "Jeu non supporté.")
         };
 
     public static bool TryParseGame(string? rawValue, out LotteryGame game)
@@ -69,7 +69,7 @@ public static class LotteryGameRulesCatalog
             }
         }
 
-        throw new InvalidOperationException($"Aucun jour de tirage defini pour {game}.");
+        throw new InvalidOperationException($"Aucun jour de tirage défini pour {game}.");
     }
 
     private static string Normalize(string rawValue) =>

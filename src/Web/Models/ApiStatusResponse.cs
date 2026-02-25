@@ -9,5 +9,5 @@ public sealed class ApiStatusResponse
     public ApiGameStatusResponse EuroMillions { get; init; } = new();
 
     public string Disclaimer { get; init; } =
-        "Chaque combinaison reste equiprobable. Les contenus sont purement informatifs.";
+        "Chaque combinaison reste équiprobable. Les contenus sont purement informatifs.";
 }

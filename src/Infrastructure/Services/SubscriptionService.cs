@@ -27,58 +27,88 @@ public sealed class SubscriptionService(
     public async Task RequestSubscriptionAsync(CreateSubscriptionRequestDto request, CancellationToken cancellationToken)
     {
         var normalizedEmail = NormalizeAndValidateEmail(request.Email);
-        if (!LotteryGameRulesCatalog.TryParseGame(request.Game, out var game))
+        var entries = request.Entries?.ToArray() ?? [];
+        if (entries.Length == 0)
         {
-            throw new ArgumentException("Jeu invalide.", nameof(request.Game));
+            throw new ArgumentException("Au moins un abonnement doit être sélectionné.", nameof(request.Entries));
         }
 
-        if (!GridGenerationStrategyExtensions.TryParseStrategy(request.Strategy, out var strategy))
-        {
-            throw new ArgumentException("Strategie invalide.", nameof(request.Strategy));
-        }
+        var subscriptionsToProcess = new Dictionary<LotteryGame, (int GridCount, GridGenerationStrategy Strategy)>();
 
-        if (request.GridCount is < 1 or > 100)
+        foreach (var entry in entries)
         {
-            throw new ArgumentOutOfRangeException(nameof(request.GridCount), "La valeur doit etre comprise entre 1 et 100.");
-        }
-
-        var subscription = await dbContext.Subscriptions
-            .Where(entity => entity.Email == normalizedEmail
-                             && entity.Game == game
-                             && entity.Status != SubscriptionStatus.Unsubscribed)
-            .OrderByDescending(entity => entity.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (subscription is null)
-        {
-            subscription = new SubscriptionEntity
+            if (!LotteryGameRulesCatalog.TryParseGame(entry.Game, out var game))
             {
-                Email = normalizedEmail,
-                Game = game
-            };
-            dbContext.Subscriptions.Add(subscription);
+                throw new ArgumentException("Jeu invalide.", nameof(request.Entries));
+            }
+
+            if (!GridGenerationStrategyExtensions.TryParseStrategy(entry.Strategy, out var strategy))
+            {
+                throw new ArgumentException("Stratégie invalide.", nameof(request.Entries));
+            }
+
+            if (entry.GridCount is < 1 or > 100)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(request.Entries),
+                    "Le nombre de grilles doit être compris entre 1 et 100.");
+            }
+
+            subscriptionsToProcess[game] = (entry.GridCount, strategy);
         }
 
-        subscription.GridCount = request.GridCount;
-        subscription.Strategy = strategy;
-        subscription.Status = SubscriptionStatus.Pending;
-        subscription.ConfirmedAt = null;
-        subscription.UnsubscribedAt = null;
-        subscription.LastSentForDrawDate = null;
+        if (subscriptionsToProcess.Count == 0)
+        {
+            throw new ArgumentException("Au moins un abonnement valide doit être sélectionné.", nameof(request.Entries));
+        }
 
-        var confirmToken = BuildToken(subscription, "confirm");
-        var unsubscribeToken = BuildToken(subscription, "unsubscribe");
-        subscription.ConfirmTokenHash = HashToken(confirmToken);
-        subscription.UnsubTokenHash = HashToken(unsubscribeToken);
+        var emailPayloads = new List<(SubscriptionEntity Subscription, string ConfirmToken, string UnsubscribeToken)>(subscriptionsToProcess.Count);
+
+        foreach (var (game, config) in subscriptionsToProcess)
+        {
+            var subscription = await dbContext.Subscriptions
+                .Where(entity => entity.Email == normalizedEmail
+                                 && entity.Game == game
+                                 && entity.Status != SubscriptionStatus.Unsubscribed)
+                .OrderByDescending(entity => entity.CreatedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (subscription is null)
+            {
+                subscription = new SubscriptionEntity
+                {
+                    Email = normalizedEmail,
+                    Game = game
+                };
+                dbContext.Subscriptions.Add(subscription);
+            }
+
+            subscription.GridCount = config.GridCount;
+            subscription.Strategy = config.Strategy;
+            subscription.Status = SubscriptionStatus.Pending;
+            subscription.ConfirmedAt = null;
+            subscription.UnsubscribedAt = null;
+            subscription.LastSentForDrawDate = null;
+
+            var confirmToken = BuildToken(subscription, "confirm");
+            var unsubscribeToken = BuildToken(subscription, "unsubscribe");
+            subscription.ConfirmTokenHash = HashToken(confirmToken);
+            subscription.UnsubTokenHash = HashToken(unsubscribeToken);
+
+            emailPayloads.Add((subscription, confirmToken, unsubscribeToken));
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var message = SubscriptionEmailTemplates.BuildConfirmationEmail(
-            subscription,
-            BuildPublicLink("abonnement/confirmation", confirmToken),
-            BuildPublicLink("abonnement/desinscription", unsubscribeToken));
+        foreach (var payload in emailPayloads)
+        {
+            var message = SubscriptionEmailTemplates.BuildConfirmationEmail(
+                payload.Subscription,
+                BuildPublicLink("abonnement/confirmation", payload.ConfirmToken),
+                BuildPublicLink("abonnement/desinscription", payload.UnsubscribeToken));
 
-        await emailSender.SendAsync(message, cancellationToken);
+            await emailSender.SendAsync(message, cancellationToken);
+        }
     }
 
     public async Task<SubscriptionActionResultDto> ConfirmAsync(string token, CancellationToken cancellationToken)
@@ -104,26 +134,26 @@ public sealed class SubscriptionService(
 
         if (subscription is null || subscription.Status == SubscriptionStatus.Unsubscribed)
         {
-            return new SubscriptionActionResultDto(false, "Lien de confirmation invalide ou expire.");
+            return new SubscriptionActionResultDto(false, "Lien de confirmation invalide ou expiré.");
         }
 
         if (subscription.Status == SubscriptionStatus.Active)
         {
-            return new SubscriptionActionResultDto(true, "Abonnement deja confirme.");
+            return new SubscriptionActionResultDto(true, "Abonnement déjà confirmé.");
         }
 
         subscription.Status = SubscriptionStatus.Active;
         subscription.ConfirmedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new SubscriptionActionResultDto(true, "Abonnement confirme avec succes.");
+        return new SubscriptionActionResultDto(true, "Abonnement confirmé avec succès.");
     }
 
     public async Task<SubscriptionActionResultDto> UnsubscribeAsync(string token, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(token))
         {
-            return new SubscriptionActionResultDto(false, "Lien de desinscription invalide.");
+            return new SubscriptionActionResultDto(false, "Lien de désinscription invalide.");
         }
 
         var tokenHash = HashToken(token);
@@ -142,19 +172,19 @@ public sealed class SubscriptionService(
 
         if (subscription is null)
         {
-            return new SubscriptionActionResultDto(false, "Lien de desinscription invalide ou expire.");
+            return new SubscriptionActionResultDto(false, "Lien de désinscription invalide ou expiré.");
         }
 
         if (subscription.Status == SubscriptionStatus.Unsubscribed)
         {
-            return new SubscriptionActionResultDto(true, "Desinscription deja effective.");
+            return new SubscriptionActionResultDto(true, "Désinscription déjà effective.");
         }
 
         subscription.Status = SubscriptionStatus.Unsubscribed;
         subscription.UnsubscribedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new SubscriptionActionResultDto(true, "Desinscription effectuee.");
+        return new SubscriptionActionResultDto(true, "Désinscription effectuée.");
     }
 
     public async Task<SubscriptionStatusDto> GetStatusByEmailAsync(string email, CancellationToken cancellationToken)
@@ -270,7 +300,7 @@ public sealed class SubscriptionService(
 
                 logger.LogError(
                     exception,
-                    "Echec d'envoi subscriptionId={SubscriptionId} drawDate={DrawDate}",
+                    "Échec d'envoi subscriptionId={SubscriptionId} drawDate={DrawDate}",
                     subscription.Id,
                     nextDrawDate);
             }
@@ -347,7 +377,7 @@ public sealed class SubscriptionService(
         var normalized = rawEmail.Trim().ToLowerInvariant();
         if (!MailAddress.TryCreate(normalized, out _))
         {
-            throw new ArgumentException("Email invalide.", nameof(rawEmail));
+            throw new ArgumentException("E-mail invalide.", nameof(rawEmail));
         }
 
         return normalized;

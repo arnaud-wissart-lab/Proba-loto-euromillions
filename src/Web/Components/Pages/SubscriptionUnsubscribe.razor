@@ -49,7 +49,7 @@
 
         if (string.IsNullOrWhiteSpace(Token))
         {
-            _errorMessage = "Lien invalide: token manquant.";
+            _errorMessage = "Lien invalide : token manquant.";
             return;
         }
 
@@ -59,13 +59,13 @@
             _result = await LotteryApiClient.UnsubscribeAsync(Token, CancellationToken.None);
             if (_result is null)
             {
-                _errorMessage = "La desinscription est indisponible temporairement.";
+                _errorMessage = "La désinscription est indisponible temporairement.";
             }
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Erreur de desinscription abonnement.");
-            _errorMessage = "Erreur inattendue pendant la desinscription.";
+            Logger.LogError(exception, "Erreur de désinscription abonnement.");
+            _errorMessage = "Erreur inattendue pendant la désinscription.";
         }
         finally
         {

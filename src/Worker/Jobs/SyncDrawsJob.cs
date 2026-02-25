@@ -11,7 +11,7 @@ public sealed class SyncDrawsJob(
     public async Task Execute(IJobExecutionContext context)
     {
         logger.LogInformation(
-            "Execution de {JobName} a {ExecutionTimeUtc}",
+            "Exécution de {JobName} à {ExecutionTimeUtc}",
             nameof(SyncDrawsJob),
             DateTimeOffset.UtcNow);
 
@@ -19,7 +19,7 @@ public sealed class SyncDrawsJob(
         var failedCount = summary.Games.Count(result => result.Status == SyncRunStatus.Fail);
 
         logger.LogInformation(
-            "Execution {JobName} terminee: jeux={GameCount}, echecs={FailureCount}, debut={StartedAtUtc}, fin={FinishedAtUtc}",
+            "Exécution {JobName} terminée : jeux={GameCount}, échecs={FailureCount}, début={StartedAtUtc}, fin={FinishedAtUtc}",
             nameof(SyncDrawsJob),
             summary.Games.Count,
             failedCount,

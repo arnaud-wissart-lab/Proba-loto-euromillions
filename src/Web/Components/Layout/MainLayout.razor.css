@@ -1,17 +1,7 @@
 .main-appbar {
-    backdrop-filter: blur(8px);
-    background: linear-gradient(115deg, rgba(15, 23, 42, 0.9), rgba(14, 116, 144, 0.82));
-    color: #f8fafc;
+    z-index: 1200;
 }
 
 .main-content {
-    min-height: calc(100vh - 140px);
-}
-
-.layout-disclaimer-top {
-    margin: 5rem 1.5rem 0.5rem 1.5rem;
-}
-
-.layout-disclaimer-bottom {
-    margin: 0.75rem 1.5rem 1.5rem 1.5rem;
+    min-height: calc(100vh - 156px);
 }

@@ -24,7 +24,7 @@ public sealed class LotteryApiClient(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Impossible de recuperer le statut API.");
+            logger.LogWarning(exception, "Impossible de récupérer le statut API.");
             return null;
         }
     }
@@ -39,7 +39,7 @@ public sealed class LotteryApiClient(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Impossible de recuperer les statistiques pour {Game}.", game);
+            logger.LogWarning(exception, "Impossible de récupérer les statistiques pour {Game}.", game);
             return null;
         }
     }
@@ -56,7 +56,7 @@ public sealed class LotteryApiClient(
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning(
-                    "Generation de grilles refusee. status={StatusCode}",
+                    "Génération de grilles refusée. status={StatusCode}",
                     response.StatusCode);
                 return null;
             }
@@ -65,7 +65,7 @@ public sealed class LotteryApiClient(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Impossible de generer des grilles.");
+            logger.LogWarning(exception, "Impossible de générer des grilles.");
             return null;
         }
     }
@@ -83,7 +83,7 @@ public sealed class LotteryApiClient(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Impossible de creer l'abonnement.");
+            logger.LogWarning(exception, "Impossible de créer l'abonnement.");
             return false;
         }
     }
@@ -119,7 +119,7 @@ public sealed class LotteryApiClient(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Impossible de desinscrire l'abonnement.");
+            logger.LogWarning(exception, "Impossible de désinscrire l'abonnement.");
             return null;
         }
     }
@@ -141,7 +141,7 @@ public sealed class LotteryApiClient(
             using var response = await client.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogWarning("Lecture SyncRuns admin refusee. status={StatusCode}", response.StatusCode);
+                logger.LogWarning("Lecture SyncRuns admin refusée. status={StatusCode}", response.StatusCode);
                 return null;
             }
 
@@ -149,7 +149,7 @@ public sealed class LotteryApiClient(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Impossible de recuperer les SyncRuns admin.");
+            logger.LogWarning(exception, "Impossible de récupérer les SyncRuns admin.");
             return null;
         }
     }
@@ -169,7 +169,7 @@ public sealed class LotteryApiClient(
             using var response = await client.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogWarning("Declenchement sync admin refuse. status={StatusCode}", response.StatusCode);
+                logger.LogWarning("Déclenchement sync admin refusé. status={StatusCode}", response.StatusCode);
                 return null;
             }
 
@@ -177,7 +177,7 @@ public sealed class LotteryApiClient(
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Impossible de declencher une synchronisation admin.");
+            logger.LogWarning(exception, "Impossible de déclencher une synchronisation admin.");
             return null;
         }
     }
@@ -186,7 +186,7 @@ public sealed class LotteryApiClient(
     {
         if (string.IsNullOrWhiteSpace(_adminOptions.ApiKey))
         {
-            logger.LogWarning("Aucune Admin:ApiKey configuree cote Web.");
+            logger.LogWarning("Aucune Admin:ApiKey configurée côté Web.");
             return false;
         }
 

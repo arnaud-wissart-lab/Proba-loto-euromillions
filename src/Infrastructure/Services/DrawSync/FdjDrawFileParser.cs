@@ -82,7 +82,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
         if (TryParseCsv(game, entryName, content, out var csvDraws))
         {
             logger.LogInformation(
-                "Parsing CSV reussi pour {Game} ({ArchiveName}/{EntryName}): {DrawCount} tirages.",
+                "Parsing CSV réussi pour {Game} ({ArchiveName}/{EntryName}) : {DrawCount} tirages.",
                 game,
                 archiveName,
                 entryName,
@@ -94,7 +94,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
         if (TryParseExcel(game, entryName, content, out var excelDraws))
         {
             logger.LogInformation(
-                "Parsing Excel reussi pour {Game} ({ArchiveName}/{EntryName}): {DrawCount} tirages.",
+                "Parsing Excel réussi pour {Game} ({ArchiveName}/{EntryName}) : {DrawCount} tirages.",
                 game,
                 archiveName,
                 entryName,
@@ -104,7 +104,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
         }
 
         logger.LogWarning(
-            "Fichier ignore pour {Game} ({ArchiveName}/{EntryName}): format non interpretable (CSV puis Excel).",
+            "Fichier ignoré pour {Game} ({ArchiveName}/{EntryName}) : format non interprétable (CSV puis Excel).",
             game,
             archiveName,
             entryName);
@@ -186,7 +186,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
             {
                 logger.LogWarning(
                     exception,
-                    "Ligne CSV invalide ignoree ({EntryName}, ligne={RowIndex}).",
+                    "Ligne CSV invalide ignorée ({EntryName}, ligne={RowIndex}).",
                     entryName,
                     rowIndex);
                 rowIndex++;
@@ -206,7 +206,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
             else
             {
                 logger.LogWarning(
-                    "Ligne CSV ignoree ({EntryName}, ligne={RowIndex}): {Reason}",
+                    "Ligne CSV ignorée ({EntryName}, ligne={RowIndex}) : {Reason}",
                     entryName,
                     rowIndex,
                     error);
@@ -266,7 +266,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
                     else
                     {
                         logger.LogWarning(
-                            "Ligne Excel ignoree ({EntryName}, table={TableName}, ligne={RowIndex}): {Reason}",
+                            "Ligne Excel ignorée ({EntryName}, table={TableName}, ligne={RowIndex}) : {Reason}",
                             entryName,
                             table.TableName,
                             rowIndex,
@@ -279,7 +279,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
         {
             logger.LogWarning(
                 exception,
-                "Echec parsing Excel pour {EntryName}.",
+                "Échec parsing Excel pour {EntryName}.",
                 entryName);
             return false;
         }
@@ -634,7 +634,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
         validationError = string.Empty;
         if (mainNumbers.Length != 5 || mainNumbers.Distinct().Count() != 5)
         {
-            validationError = "les 5 boules principales doivent etre presentes et distinctes";
+            validationError = "les 5 boules principales doivent être présentes et distinctes";
             return false;
         }
 
@@ -648,7 +648,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
 
             if (bonusNumbers.Length != 1 || bonusNumbers[0] is < 1 or > 10)
             {
-                validationError = "numero chance hors plage [1..10]";
+                validationError = "numéro chance hors plage [1..10]";
                 return false;
             }
 
@@ -663,7 +663,7 @@ public sealed partial class FdjDrawFileParser(ILogger<FdjDrawFileParser> logger)
 
         if (bonusNumbers.Length != 2 || bonusNumbers.Distinct().Count() != 2 || bonusNumbers.Any(number => number is < 1 or > 12))
         {
-            validationError = "etoiles hors plage [1..12]";
+            validationError = "étoiles hors plage [1..12]";
             return false;
         }
 

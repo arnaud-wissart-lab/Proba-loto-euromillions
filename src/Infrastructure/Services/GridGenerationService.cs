@@ -28,7 +28,7 @@ public sealed class GridGenerationService(
     {
         if (gridCount is < 1 or > 100)
         {
-            throw new ArgumentOutOfRangeException(nameof(gridCount), gridCount, "Le nombre de grilles doit etre compris entre 1 et 100.");
+            throw new ArgumentOutOfRangeException(nameof(gridCount), gridCount, "Le nombre de grilles doit être compris entre 1 et 100.");
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -87,11 +87,11 @@ public sealed class GridGenerationService(
         if (generatedGrids.Count < gridCount)
         {
             warning =
-                $"Unicite atteinte: {generatedGrids.Count} grille(s) unique(s) generee(s) sur {gridCount} demandee(s).";
+                $"Unicité atteinte : {generatedGrids.Count} grille(s) unique(s) générée(s) sur {gridCount} demandée(s).";
         }
 
         logger.LogInformation(
-            "Generation de grilles {Game} terminee: demande={Requested}, generees={Generated}, strategie={Strategy}, tentatives={Attempts}",
+            "Génération de grilles {Game} terminée : demande={Requested}, générées={Generated}, stratégie={Strategy}, tentatives={Attempts}",
             game,
             gridCount,
             generatedGrids.Count,
@@ -176,6 +176,6 @@ public sealed class GridGenerationService(
         $"{string.Join('-', mainNumbers)}|{string.Join('-', bonusNumbers)}";
 
     private static string BuildDisclaimer(LotteryGame game, long totalCombinations) =>
-        $"Chaque combinaison {game} reste equiprobable. Les ponderations (frequence/recence) sont indicatives. " +
-        $"Nombre total de combinaisons possibles: {totalCombinations:N0}.";
+        $"Chaque combinaison {game} reste équiprobable. Les pondérations (fréquence/récence) sont indicatives. " +
+        $"Nombre total de combinaisons possibles : {totalCombinations:N0}.";
 }

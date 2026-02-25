@@ -6,41 +6,69 @@
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="page-container">
     <MudPaper Elevation="1" Class="section-panel">
-        <MudText Typo="Typo.h4" GutterBottom="true">Abonnement email</MudText>
+        <MudText Typo="Typo.h4" GutterBottom="true">Abonnement e-mail</MudText>
         <MudText Typo="Typo.body2">
             Recevez la veille de chaque tirage vos grilles calculées (double opt-in).
+            Vous pouvez activer Loto, EuroMillions ou les deux dans une seule demande.
         </MudText>
 
         <MudGrid Class="mt-4">
             <MudItem xs="12">
-                <MudTextField Label="Email"
+                <MudTextField Label="Adresse e-mail"
                               Variant="Variant.Outlined"
                               Immediate="true"
                               @bind-Value="_email" />
             </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect T="string" Label="Jeu" Variant="Variant.Outlined" @bind-Value="_game">
-                    <MudSelectItem T="string" Value="@("Loto")">Loto</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("EuroMillions")">EuroMillions</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudNumericField T="int"
-                                 Label="Nombre de grilles"
-                                 Variant="Variant.Outlined"
-                                 Min="1"
-                                 Max="100"
-                                 Immediate="true"
-                                 @bind-Value="_gridCount" />
-            </MudItem>
             <MudItem xs="12">
-                <MudSelect T="string" Label="Stratégie" Variant="Variant.Outlined" @bind-Value="_strategy">
-                    <MudSelectItem T="string" Value="@("uniform")">A) Aléatoire (uniforme)</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("frequency")">B) Pondéré par fréquence</MudSelectItem>
-                    <MudSelectItem T="string" Value="@("recency")">C) Pondéré par récence</MudSelectItem>
-                </MudSelect>
+                <MudText Typo="Typo.subtitle2">Jeux et paramètres</MudText>
+                <MudText Typo="Typo.caption">Cochez un ou plusieurs jeux.</MudText>
             </MudItem>
         </MudGrid>
+
+        @foreach (var option in _options)
+        {
+            <MudPaper Elevation="0" Class="subscription-option mt-3">
+                <MudCheckBox T="bool" @bind-Value="option.Selected" Label="@($"Recevoir des grilles {option.Game}")" />
+
+                @if (option.Selected)
+                {
+                    <MudGrid Class="mt-2 subscription-grid">
+                        <MudItem xs="12" md="6">
+                            <MudNumericField T="int"
+                                             Label="Nombre de grilles"
+                                             Variant="Variant.Outlined"
+                                             Min="1"
+                                             Max="100"
+                                             Immediate="true"
+                                             @bind-Value="option.GridCount" />
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string" Label="Stratégie" Variant="Variant.Outlined" @bind-Value="option.Strategy">
+                                <MudSelectItem T="string" Value="@("uniform")">A) Aléatoire (uniforme)</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("frequency")">B) Pondéré par fréquence</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("recency")">C) Pondéré par récence</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                    </MudGrid>
+                }
+            </MudPaper>
+        }
+
+        <MudPaper Elevation="0" Class="strategy-help-card">
+            <MudText Typo="Typo.subtitle2">Comprendre les stratégies proposées</MudText>
+            <ul class="strategy-help-list">
+                <li><strong>A) Aléatoire (uniforme)</strong> : tous les numéros ont exactement le même poids.</li>
+                <li><strong>B) Pondéré par fréquence</strong> : les numéros sortis plus souvent dans l'historique reçoivent plus de poids.</li>
+                <li><strong>C) Pondéré par récence</strong> : les numéros vus récemment reçoivent plus de poids que les plus anciens.</li>
+            </ul>
+            <MudText Typo="Typo.caption">
+                Dans tous les cas, cela reste un calcul statistique informatif : il n'y a pas de prédiction certaine.
+            </MudText>
+        </MudPaper>
+
+        <MudText Typo="Typo.caption" Class="mt-3">
+            Confirmation envoyée par e-mail pour chaque jeu sélectionné.
+        </MudText>
 
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
@@ -65,16 +93,18 @@
     @if (_submitted)
     {
         <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-4">
-            Si l'adresse fournie est valide, un email de confirmation vous a été envoyé.
+            Si l'adresse fournie est valide, un e-mail de confirmation a été envoyé pour chaque jeu sélectionné.
         </MudAlert>
     }
 </MudContainer>
 
 @code {
     private string _email = string.Empty;
-    private string _game = "Loto";
-    private int _gridCount = 5;
-    private string _strategy = "uniform";
+    private readonly List<SubscriptionOption> _options =
+    [
+        new("Loto", selected: true),
+        new("EuroMillions")
+    ];
     private bool _isSubmitting;
     private bool _submitted;
     private string? _errorMessage;
@@ -86,7 +116,7 @@
 
         if (!IsValidEmail(_email))
         {
-            _errorMessage = "Veuillez saisir une adresse email valide.";
+            _errorMessage = "Veuillez saisir une adresse e-mail valide.";
             return;
         }
 
@@ -94,19 +124,23 @@
 
         try
         {
+            var entries = GetSelectedEntries();
+            if (entries.Count == 0)
+            {
+                return;
+            }
+
             var success = await LotteryApiClient.RequestSubscriptionAsync(
                 new ApiCreateSubscriptionRequest
                 {
                     Email = _email,
-                    Game = _game,
-                    GridCount = Math.Clamp(_gridCount, 1, 100),
-                    Strategy = _strategy
+                    Entries = entries
                 },
                 CancellationToken.None);
 
             if (!success)
             {
-                _errorMessage = "L'abonnement n'a pas pu etre enregistre. Reessayez plus tard.";
+                _errorMessage = "L'abonnement n'a pas pu être enregistré. Réessayez plus tard.";
                 return;
             }
 
@@ -123,6 +157,37 @@
         }
     }
 
+    private IReadOnlyCollection<ApiSubscriptionEntryRequest> GetSelectedEntries()
+    {
+        var selectedEntries = _options
+            .Where(option => option.Selected)
+            .Select(option => new ApiSubscriptionEntryRequest
+            {
+                Game = option.Game,
+                GridCount = Math.Clamp(option.GridCount, 1, 100),
+                Strategy = option.Strategy
+            })
+            .ToArray();
+
+        if (selectedEntries.Length == 0)
+        {
+            _errorMessage = "Sélectionnez au moins un jeu.";
+        }
+
+        return selectedEntries;
+    }
+
     private static bool IsValidEmail(string email) =>
         !string.IsNullOrWhiteSpace(email) && System.Net.Mail.MailAddress.TryCreate(email.Trim(), out _);
+
+    private sealed class SubscriptionOption(string game, bool selected = false)
+    {
+        public string Game { get; } = game;
+
+        public bool Selected { get; set; } = selected;
+
+        public int GridCount { get; set; } = 5;
+
+        public string Strategy { get; set; } = "uniform";
+    }
 }

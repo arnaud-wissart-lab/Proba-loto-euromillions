@@ -1,27 +1,61 @@
 @inherits LayoutComponentBase
+@using Web.Theming
 
-<MudThemeProvider />
+<MudThemeProvider Theme="@_activeTheme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
     <MudAppBar Elevation="0" Dense="true" Class="main-appbar">
-        <MudText Typo="Typo.h6">Probabilités Loto &amp; EuroMillions</MudText>
-        <MudSpacer />
-        <MudStack Row="true" Spacing="1" Class="wrap-stack">
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/">Accueil</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/grilles">Générer</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/statistiques">Statistiques</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/abonnement">Abonnement</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/admin">Admin</MudButton>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="brand-stack">
+            <MudIcon Icon="@Icons.Material.Filled.QueryStats" Class="brand-icon" />
+            <MudText Typo="Typo.h6">Probabilités Loto &amp; EuroMillions</MudText>
         </MudStack>
+
         <MudSpacer />
-        <MudText Typo="Typo.caption">Statistiques informatives</MudText>
+
+        <MudHidden Breakpoint="Breakpoint.MdAndDown">
+            <MudStack Row="true" Spacing="1" Class="nav-actions">
+                @foreach (var link in _navigationLinks)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="@link.Href" Class="nav-button">
+                        @link.Label
+                    </MudButton>
+                }
+            </MudStack>
+        </MudHidden>
+
+        <MudHidden Breakpoint="Breakpoint.LgAndUp">
+            <MudMenu Icon="@Icons.Material.Filled.Menu">
+                @foreach (var link in _navigationLinks)
+                {
+                    <MudMenuItem Href="@link.Href">@link.Label</MudMenuItem>
+                }
+            </MudMenu>
+        </MudHidden>
+
+        <MudHidden Breakpoint="Breakpoint.MdAndDown">
+            <MudMenu Label="@($"Thème : {AppThemeCatalog.ResolveLabel(_selectedThemeKey)}")" Class="theme-menu">
+                @foreach (var option in AppThemeCatalog.All)
+                {
+                    <MudMenuItem OnClick="@(() => SetTheme(option.Key))">@option.Label</MudMenuItem>
+                }
+            </MudMenu>
+        </MudHidden>
+
+        <MudHidden Breakpoint="Breakpoint.LgAndUp">
+            <MudMenu Icon="@Icons.Material.Filled.Palette">
+                @foreach (var option in AppThemeCatalog.All)
+                {
+                    <MudMenuItem OnClick="@(() => SetTheme(option.Key))">@option.Label</MudMenuItem>
+                }
+            </MudMenu>
+        </MudHidden>
     </MudAppBar>
 
     <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="layout-disclaimer-top">
-        Chaque combinaison est équiprobable. Les pondérations affichées sont purement informatives.
+        Chaque combinaison est équiprobable. Les pondérations restent des repères statistiques.
     </MudAlert>
 
     <MudMainContent Class="main-content">
@@ -30,7 +64,29 @@
 
     <MudPaper Elevation="0" Class="layout-disclaimer-bottom">
         <MudText Typo="Typo.caption">
-            Jeu responsable: les jeux d'argent comportent des risques (endettement, isolement, dépendance).
+            Jeu responsable : les jeux d'argent comportent des risques (endettement, isolement, dépendance).
         </MudText>
     </MudPaper>
 </MudLayout>
+
+@code {
+    private readonly IReadOnlyCollection<NavLinkDefinition> _navigationLinks =
+    [
+        new("/", "Accueil"),
+        new("/grilles", "Générer"),
+        new("/statistiques", "Statistiques"),
+        new("/abonnement", "Abonnement"),
+        new("/admin", "Admin")
+    ];
+
+    private string _selectedThemeKey = AppThemeCatalog.DefaultThemeKey;
+    private MudTheme _activeTheme = AppThemeCatalog.ResolveTheme(AppThemeCatalog.DefaultThemeKey);
+
+    private void SetTheme(string themeKey)
+    {
+        _selectedThemeKey = themeKey;
+        _activeTheme = AppThemeCatalog.ResolveTheme(themeKey);
+    }
+
+    private sealed record NavLinkDefinition(string Href, string Label);
+}

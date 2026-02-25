@@ -8,8 +8,8 @@
     <MudPaper Elevation="1" Class="section-panel">
         <MudText Typo="Typo.h4" GutterBottom="true">Administration</MudText>
         <MudText Typo="Typo.body2">
-            Cette page est reservee a l'administration et protegee par authentification HTTP basique.
-            Elle permet de lancer une synchronisation immediate et de consulter l'historique des executions.
+            Cette page est réservée à l'administration et protégée par authentification HTTP basique.
+            Elle permet de lancer une synchronisation immédiate et de consulter l'historique des exécutions.
         </MudText>
 
         <MudStack Row="true" Spacing="2" Class="mt-3 wrap-stack">
@@ -27,7 +27,7 @@
                        Color="Color.Secondary"
                        Disabled="@(_isLoading || _isSyncRunning)"
                        OnClick="@RefreshAsync">
-                Rafraichir
+                Rafraîchir
             </MudButton>
         </MudStack>
     </MudPaper>
@@ -41,12 +41,39 @@
 
     @if (_lastSyncSummary is not null)
     {
-        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-4">
-            Synchronisation terminee.
-            Debut: @FormatDateTime(_lastSyncSummary.StartedAtUtc),
-            fin: @FormatDateTime(_lastSyncSummary.FinishedAtUtc),
-            jeux traites: @_lastSyncSummary.Games.Count.
+        <MudAlert Severity="@(_hasSyncFailures ? Severity.Warning : Severity.Success)" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+            @if (_hasSyncFailures)
+            {
+                <span>
+                    Synchronisation terminée avec erreurs.
+                    Début: @FormatDateTime(_lastSyncSummary.StartedAtUtc),
+                    fin: @FormatDateTime(_lastSyncSummary.FinishedAtUtc),
+                    jeux en échec: @_failedSyncGames.Count.
+                </span>
+            }
+            else
+            {
+                <span>
+                    Synchronisation terminée.
+                    Début: @FormatDateTime(_lastSyncSummary.StartedAtUtc),
+                    fin: @FormatDateTime(_lastSyncSummary.FinishedAtUtc),
+                    jeux traités: @_lastSyncSummary.Games.Count.
+                </span>
+            }
         </MudAlert>
+    }
+
+    @if (_hasSyncFailures && _failedSyncGames.Count > 0)
+    {
+        <MudPaper Elevation="0" Class="section-panel mt-4">
+            <MudText Typo="Typo.subtitle1">Détail des jeux en échec</MudText>
+            @foreach (var failedGame in _failedSyncGames)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Dense="true" Class="mt-2">
+                    <strong>@failedGame.Game</strong> : @(string.IsNullOrWhiteSpace(failedGame.Error) ? "Erreur inconnue." : failedGame.Error)
+                </MudAlert>
+            }
+        </MudPaper>
     }
 
     <MudPaper Elevation="0" Class="section-panel mt-4">
@@ -58,28 +85,28 @@
         else if (_runs.Count == 0)
         {
             <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" Class="mt-3">
-                Aucun run enregistre.
+                Aucun run enregistré.
             </MudAlert>
         }
         else
         {
             <MudTable Items="_runs" Dense="true" Hover="true" Class="mt-3">
                 <HeaderContent>
-                    <MudTh>Debut (UTC)</MudTh>
+                    <MudTh>Début (UTC)</MudTh>
                     <MudTh>Fin (UTC)</MudTh>
                     <MudTh>Jeu</MudTh>
                     <MudTh>Statut</MudTh>
                     <MudTh>Upserts</MudTh>
-                    <MudTh>Duree</MudTh>
+                    <MudTh>Durée</MudTh>
                     <MudTh>Erreur</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="Debut">@FormatDateTime(context.StartedAtUtc)</MudTd>
+                    <MudTd DataLabel="Début">@FormatDateTime(context.StartedAtUtc)</MudTd>
                     <MudTd DataLabel="Fin">@FormatDateTime(context.FinishedAtUtc)</MudTd>
                     <MudTd DataLabel="Jeu">@context.Game</MudTd>
                     <MudTd DataLabel="Statut">@context.Status</MudTd>
                     <MudTd DataLabel="Upserts">@context.DrawsUpsertedCount</MudTd>
-                    <MudTd DataLabel="Duree">@FormatDuration(context.StartedAtUtc, context.FinishedAtUtc)</MudTd>
+                    <MudTd DataLabel="Durée">@FormatDuration(context.StartedAtUtc, context.FinishedAtUtc)</MudTd>
                     <MudTd DataLabel="Erreur">
                         @if (string.IsNullOrWhiteSpace(context.Error))
                         {
@@ -100,8 +127,10 @@
     private readonly List<ApiAdminSyncRunResponse> _runs = [];
     private bool _isLoading;
     private bool _isSyncRunning;
+    private bool _hasSyncFailures;
     private string? _errorMessage;
     private ApiSyncExecutionSummaryResponse? _lastSyncSummary;
+    private IReadOnlyCollection<ApiGameSyncResultResponse> _failedSyncGames = [];
 
     protected override async Task OnInitializedAsync() => await LoadRunsAsync();
 
@@ -111,22 +140,36 @@
     {
         _errorMessage = null;
         _isSyncRunning = true;
+        _hasSyncFailures = false;
+        _failedSyncGames = [];
 
         try
         {
             var summary = await LotteryApiClient.TriggerAdminSyncAsync(CancellationToken.None);
             if (summary is null)
             {
-                _errorMessage = "Synchronisation admin indisponible (verifiez Admin:ApiKey).";
+                _errorMessage = "Synchronisation admin indisponible (vérifiez Admin:ApiKey).";
                 return;
             }
 
             _lastSyncSummary = summary;
+            _failedSyncGames = summary.Games
+                .Where(item => string.Equals(item.Status, "Fail", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            _hasSyncFailures = _failedSyncGames.Count > 0;
+
+            if (_hasSyncFailures)
+            {
+                Logger.LogWarning(
+                    "Synchronisation admin terminée avec des échecs. failedGames={Games}",
+                    string.Join(", ", _failedSyncGames.Select(item => item.Game)));
+            }
+
             await LoadRunsAsync();
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Declenchement sync admin en echec.");
+            Logger.LogError(exception, "Déclenchement sync admin en échec.");
             _errorMessage = "Erreur inattendue pendant la synchronisation admin.";
         }
         finally
@@ -147,7 +190,7 @@
 
             if (runs is null)
             {
-                _errorMessage = "Lecture des SyncRuns indisponible (verifiez Admin:ApiKey).";
+                _errorMessage = "Lecture des SyncRuns indisponible (vérifiez Admin:ApiKey).";
                 return;
             }
 
@@ -155,7 +198,7 @@
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Chargement des SyncRuns admin en echec.");
+            Logger.LogError(exception, "Chargement des SyncRuns admin en échec.");
             _errorMessage = "Erreur inattendue lors du chargement des SyncRuns.";
         }
         finally

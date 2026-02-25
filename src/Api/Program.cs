@@ -121,7 +121,7 @@ app.MapGet(
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["game"] = ["Valeur invalide. Valeurs supportees: Loto, EuroMillions."]
+                    ["game"] = ["Valeur invalide. Valeurs supportées : Loto, EuroMillions."]
                 });
             }
 
@@ -130,7 +130,7 @@ app.MapGet(
         })
     .WithName("GetGameStats")
     .WithTags("Statistiques")
-    .WithSummary("Retourne les statistiques de frequences et dernieres sorties d'un jeu.")
+    .WithSummary("Retourne les statistiques de fréquences et dernières sorties d'un jeu.")
     .Produces<GameStatsDto>(StatusCodes.Status200OK)
     .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
@@ -154,7 +154,7 @@ app.MapPost(
         })
     .WithName("PostGenerateGrids")
     .WithTags("Grilles")
-    .WithSummary("Genere des grilles uniques (uniforme, frequence, recence) avec score explicable.")
+    .WithSummary("Génère des grilles uniques (uniforme, fréquence, récence) avec score explicable.")
     .Accepts<GenerateGridsRequestDto>("application/json")
     .Produces<GenerateGridsResponseDto>(StatusCodes.Status200OK)
     .ProducesValidationProblem(StatusCodes.Status400BadRequest);
@@ -172,13 +172,13 @@ app.MapPost(
             await subscriptionService.RequestSubscriptionAsync(request, cancellationToken);
             return Results.Accepted(value: new
             {
-                message = "Si l'adresse fournie est valide, un email de confirmation a ete envoye."
+                message = "Si l'adresse fournie est valide, des emails de confirmation ont été envoyés."
             });
         })
     .RequireRateLimiting("subscriptions-post")
     .WithName("PostSubscription")
     .WithTags("Abonnements")
-    .WithSummary("Cree un abonnement en statut Pending et envoie un email de confirmation.")
+    .WithSummary("Crée un ou plusieurs abonnements en statut Pending et envoie les emails de confirmation.")
     .Accepts<CreateSubscriptionRequestDto>("application/json")
     .Produces(StatusCodes.Status202Accepted)
     .ProducesValidationProblem(StatusCodes.Status400BadRequest);
@@ -240,7 +240,7 @@ app.MapGet(
             Results.Ok(await subscriptionService.UnsubscribeAsync(token, cancellationToken)))
     .WithName("GetSubscriptionUnsubscribe")
     .WithTags("Abonnements")
-    .WithSummary("Desinscrit un abonnement via token.")
+    .WithSummary("Désinscrit un abonnement via token.")
     .Produces<SubscriptionActionResultDto>(StatusCodes.Status200OK);
 
 app.MapGet(
@@ -251,7 +251,7 @@ app.MapGet(
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["email"] = ["Adresse email invalide."]
+                    ["email"] = ["Adresse e-mail invalide."]
                 });
             }
 
@@ -271,19 +271,19 @@ app.MapDelete(
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["email"] = ["Adresse email invalide."]
+                    ["email"] = ["Adresse e-mail invalide."]
                 });
             }
 
             await subscriptionService.DeleteDataByEmailAsync(email, cancellationToken);
             return Results.Accepted(value: new
             {
-                message = "Si des donnees existent pour cet email, elles ont ete supprimees."
+                message = "Si des données existent pour cet email, elles ont été supprimées."
             });
         })
     .WithName("DeleteSubscriptionData")
     .WithTags("Abonnements")
-    .WithSummary("Suppression RGPD des donnees d'abonnement pour un email.")
+    .WithSummary("Suppression RGPD des données d'abonnement pour un email.")
     .Produces(StatusCodes.Status202Accepted)
     .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
@@ -306,13 +306,16 @@ app.MapPost(
             }
 
             var summary = await drawSyncService.SyncAllAsync("api", cancellationToken);
-            return Results.Ok(summary);
+            return summary.Games.Any(item => item.Status == SyncRunStatus.Fail)
+                ? Results.Json(summary, statusCode: StatusCodes.Status207MultiStatus)
+                : Results.Ok(summary);
         })
     .WithName("PostAdminSync")
     .WithTags("Admin")
     .WithSummary("Déclenche une synchronisation manuelle des tirages FDJ.")
     .WithDescription("Protection simple via header X-Api-Key.")
     .Produces<SyncExecutionSummaryDto>(StatusCodes.Status200OK)
+    .Produces<SyncExecutionSummaryDto>(StatusCodes.Status207MultiStatus)
     .Produces(StatusCodes.Status401Unauthorized)
     .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
@@ -354,17 +357,17 @@ static Dictionary<string, string[]> ValidateGenerateRequest(
 
     if (!LotteryGameRulesCatalog.TryParseGame(request.Game, out game))
     {
-        errors["game"] = ["Valeur invalide. Valeurs supportees: Loto, EuroMillions."];
+        errors["game"] = ["Valeur invalide. Valeurs supportées : Loto, EuroMillions."];
     }
 
     if (!GridGenerationStrategyExtensions.TryParseStrategy(request.Strategy, out strategy))
     {
-        errors["strategy"] = ["Valeur invalide. Valeurs supportees: uniform, frequency, recency."];
+        errors["strategy"] = ["Valeur invalide. Valeurs supportées : uniform, frequency, recency."];
     }
 
     if (request.Count is < 1 or > 100)
     {
-        errors["count"] = ["La valeur doit etre comprise entre 1 et 100."];
+        errors["count"] = ["La valeur doit être comprise entre 1 et 100."];
     }
 
     return errors;
@@ -376,22 +379,43 @@ static Dictionary<string, string[]> ValidateSubscriptionRequest(CreateSubscripti
 
     if (!IsValidEmail(request.Email))
     {
-        errors["email"] = ["Adresse email invalide."];
+        errors["email"] = ["Adresse e-mail invalide."];
     }
 
-    if (!LotteryGameRulesCatalog.TryParseGame(request.Game, out _))
+    var entries = request.Entries?.ToArray() ?? [];
+    if (entries.Length == 0)
     {
-        errors["game"] = ["Valeur invalide. Valeurs supportees: Loto, EuroMillions."];
+        errors["entries"] = ["Sélectionnez au moins un abonnement."];
+        return errors;
     }
 
-    if (request.GridCount is < 1 or > 100)
-    {
-        errors["gridCount"] = ["La valeur doit etre comprise entre 1 et 100."];
-    }
+    var seenGames = new HashSet<LotteryGame>();
 
-    if (!GridGenerationStrategyExtensions.TryParseStrategy(request.Strategy, out _))
+    for (var index = 0; index < entries.Length; index++)
     {
-        errors["strategy"] = ["Valeur invalide. Valeurs supportees: uniform, frequency, recency."];
+        var entry = entries[index];
+        var prefix = $"entries[{index}]";
+
+        if (!LotteryGameRulesCatalog.TryParseGame(entry.Game, out var game))
+        {
+            errors[$"{prefix}.game"] = ["Valeur invalide. Valeurs supportées : Loto, EuroMillions."];
+            continue;
+        }
+
+        if (!seenGames.Add(game))
+        {
+            errors[$"{prefix}.game"] = ["Chaque jeu ne peut être sélectionné qu'une seule fois."];
+        }
+
+        if (entry.GridCount is < 1 or > 100)
+        {
+            errors[$"{prefix}.gridCount"] = ["La valeur doit être comprise entre 1 et 100."];
+        }
+
+        if (!GridGenerationStrategyExtensions.TryParseStrategy(entry.Strategy, out _))
+        {
+            errors[$"{prefix}.strategy"] = ["Valeur invalide. Valeurs supportées : uniform, frequency, recency."];
+        }
     }
 
     return errors;

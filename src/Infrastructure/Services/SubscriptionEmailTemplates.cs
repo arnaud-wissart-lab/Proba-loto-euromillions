@@ -20,9 +20,9 @@ internal static class SubscriptionEmailTemplates
         var textBody = $"""
 Bonjour,
 
-Vous avez demandé un abonnement email pour Probabilités {gameLabel}.
+Vous avez demandé un abonnement e-mail pour Probabilités {gameLabel}.
 
-Parametres:
+Paramètres :
 - Jeu: {gameLabel}
 - Nombre de grilles: {subscription.GridCount}
 - Stratégie: {strategyLabel}
@@ -30,7 +30,7 @@ Parametres:
 Confirmez votre abonnement:
 {confirmLink}
 
-Lien de desinscription:
+Lien de désinscription:
 {unsubscribeLink}
 
 Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de hasard.
@@ -41,8 +41,8 @@ Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de h
 <html lang="fr">
 <body style="font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
   <h2>Confirmez votre abonnement</h2>
-  <p>Vous avez demandé un abonnement email pour <strong>Probabilités {gameLabel}</strong>.</p>
-  <p><strong>Parametres</strong></p>
+  <p>Vous avez demandé un abonnement e-mail pour <strong>Probabilités {gameLabel}</strong>.</p>
+  <p><strong>Paramètres</strong></p>
   <ul>
     <li>Jeu: {gameLabel}</li>
     <li>Nombre de grilles: {subscription.GridCount}</li>
@@ -125,8 +125,8 @@ Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de h
         strategy switch
         {
             GridGenerationStrategy.Uniform => "A) Aléatoire (uniforme)",
-            GridGenerationStrategy.FrequencyWeighted => "B) Pondérée par fréquence",
-            GridGenerationStrategy.RecencyWeighted => "C) Pondérée par récence",
+            GridGenerationStrategy.FrequencyWeighted => "B) Pondéré par fréquence",
+            GridGenerationStrategy.RecencyWeighted => "C) Pondéré par récence",
             _ => "Aléatoire"
         };
 }

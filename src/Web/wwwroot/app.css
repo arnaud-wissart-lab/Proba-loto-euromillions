@@ -1,9 +1,18 @@
 :root {
-    --bg-start: #f1f5f9;
-    --bg-end: #dbeafe;
-    --panel-bg: rgba(255, 255, 255, 0.88);
-    --kpi-bg: rgba(248, 250, 252, 0.96);
-    --text-main: #0f172a;
+    --surface-base: #f4f6fa;
+    --surface-muted: #e9edf3;
+    --panel-bg: rgba(255, 255, 255, 0.96);
+    --panel-bg-strong: #ffffff;
+    --kpi-bg: rgba(248, 250, 252, 0.98);
+    --text-main: #1f2937;
+    --text-muted: #4b5563;
+    --border-subtle: #d7dee8;
+    --info-soft: #eff6ff;
+    --warning-soft: #fff7ed;
+    --radius-lg: 18px;
+    --radius-md: 14px;
+    --shadow-soft: 0 12px 30px rgba(15, 23, 42, 0.08);
+    --shadow-panel: 0 4px 14px rgba(15, 23, 42, 0.06);
 }
 
 html,
@@ -15,82 +24,108 @@ body {
 }
 
 body {
-    background: radial-gradient(circle at 10% 10%, #a7f3d0 0%, transparent 25%),
-        radial-gradient(circle at 90% 20%, #bfdbfe 0%, transparent 30%),
-        linear-gradient(140deg, var(--bg-start), var(--bg-end));
+    background: linear-gradient(180deg, #fbfdff 0%, var(--surface-base) 58%, var(--surface-muted) 100%);
+}
+
+:focus-visible {
+    outline: 3px solid #2458c5;
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 .main-appbar {
-    backdrop-filter: blur(10px);
-    background: rgba(11, 18, 32, 0.78) !important;
+    backdrop-filter: blur(12px);
+    background: rgba(248, 250, 253, 0.94) !important;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-main) !important;
+    padding: 0.25rem 0.7rem;
+}
+
+.brand-stack {
+    min-width: 0;
+}
+
+.brand-icon {
+    color: #2458c5;
+}
+
+.nav-actions {
+    flex-wrap: wrap;
+}
+
+.nav-button {
+    font-weight: 600;
+}
+
+.theme-menu {
+    margin-left: 0.25rem;
 }
 
 .main-content {
-    min-height: calc(100vh - 140px);
+    min-height: calc(100vh - 156px);
+    padding-bottom: 1rem;
 }
 
 .layout-disclaimer-top {
-    margin: 5rem 1.5rem 0.5rem 1.5rem;
-    border-radius: 10px;
+    margin: 4.75rem auto 0.75rem auto;
+    max-width: min(1320px, calc(100% - 3rem));
+    border-radius: 12px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-subtle);
 }
 
 .layout-disclaimer-bottom {
-    margin: 0.75rem 1.5rem 1.5rem 1.5rem;
-    padding: 0.8rem 1rem;
-    border-radius: 10px;
-    border: 1px solid rgba(15, 23, 42, 0.1);
-    background: rgba(255, 255, 255, 0.85);
+    margin: 0.75rem auto 1.4rem auto;
+    max-width: min(1320px, calc(100% - 3rem));
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: var(--panel-bg);
 }
 
-.landing-container {
-    padding-top: 1rem;
-    padding-bottom: 2rem;
-}
-
+.landing-container,
 .page-container {
-    padding-top: 1rem;
+    padding-top: 0.65rem;
     padding-bottom: 2rem;
 }
 
 .section-panel {
-    padding: clamp(1rem, 2.8vw, 1.6rem);
+    padding: clamp(1rem, 2.6vw, 1.5rem);
     background: var(--panel-bg);
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    border-radius: 16px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-panel);
 }
 
 .hero-panel {
-    padding: clamp(1.25rem, 3vw, 2rem);
+    padding: clamp(1.25rem, 3vw, 1.9rem);
     background: var(--panel-bg);
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    border-radius: 18px;
-    box-shadow: 0 16px 45px rgba(15, 23, 42, 0.1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
 }
 
 .kpi-card {
     padding: 1.2rem;
-    border-radius: 14px;
+    border-radius: var(--radius-md);
     background: var(--kpi-bg);
-    border: 1px solid rgba(15, 23, 42, 0.1);
-    min-height: 110px;
+    border: 1px solid var(--border-subtle);
+    min-height: 112px;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 
-.hero-actions {
-    flex-wrap: wrap;
-}
-
+.hero-actions,
 .wrap-stack {
     flex-wrap: wrap;
 }
 
 .disclaimer-panel {
     padding: 1rem 1.2rem;
-    background: rgba(14, 116, 144, 0.1);
+    background: var(--info-soft);
     border-radius: 12px;
-    border: 1px solid rgba(14, 116, 144, 0.2);
+    border: 1px solid #bfdbfe;
 }
 
 .tag-pill {
@@ -99,24 +134,30 @@ body {
 }
 
 .tag-pill-info {
-    background: rgba(14, 116, 144, 0.12);
-    border: 1px solid rgba(14, 116, 144, 0.25);
+    background: #ecfeff;
+    border: 1px solid #a5f3fc;
 }
 
 .tag-pill-warning {
-    background: rgba(217, 119, 6, 0.12);
-    border: 1px solid rgba(217, 119, 6, 0.25);
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
 }
 
 .grid-card {
     padding: 1rem;
-    border-radius: 14px;
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    background: rgba(255, 255, 255, 0.95);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--panel-bg-strong);
+    box-shadow: var(--shadow-panel);
 }
 
 .stats-table {
     margin-top: 0.8rem;
+}
+
+.stats-table .mud-table-container {
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
 }
 
 .mini-bar-track {
@@ -124,14 +165,42 @@ body {
     min-width: 90px;
     height: 10px;
     border-radius: 999px;
-    background: rgba(15, 23, 42, 0.12);
+    background: #dbe4ef;
     overflow: hidden;
 }
 
 .mini-bar-fill {
     height: 100%;
     border-radius: 999px;
-    background: linear-gradient(90deg, #0ea5e9, #06b6d4);
+    background: linear-gradient(90deg, #2458c5, #0e7490);
+}
+
+.subscription-grid {
+    gap: 0.5rem 0;
+}
+
+.subscription-option {
+    padding: 0.95rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-subtle);
+    background: var(--panel-bg-strong);
+}
+
+.strategy-help-card {
+    margin-top: 1rem;
+    padding: 0.95rem 1.1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid #bfdbfe;
+    background: #f8fbff;
+}
+
+.strategy-help-list {
+    margin: 0.5rem 0 0 1rem;
+    color: var(--text-muted);
+}
+
+.strategy-help-list li {
+    margin-bottom: 0.45rem;
 }
 
 .nav-placeholder {
@@ -146,6 +215,30 @@ code {
 
 @media (max-width: 960px) {
     .layout-disclaimer-top {
-        margin-top: 7rem;
+        margin-top: 6.6rem;
+        max-width: calc(100% - 1.4rem);
+    }
+
+    .layout-disclaimer-bottom {
+        max-width: calc(100% - 1.4rem);
+    }
+}
+
+@media (max-width: 600px) {
+    .main-appbar {
+        padding: 0.2rem 0.25rem;
+    }
+
+    .hero-actions .mud-button-root {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
     }
 }

@@ -95,6 +95,41 @@ public sealed class SubscriptionServiceTests
         Assert.Empty(dbContext.EmailSendLogs);
     }
 
+    [Fact]
+    public async Task RequestSubscriptionShouldAcceptMultipleGamesInSingleRequest()
+    {
+        await using var dbContext = CreateDbContext(nameof(RequestSubscriptionShouldAcceptMultipleGamesInSingleRequest));
+        var emailSender = new InMemoryEmailSender();
+        var service = CreateService(dbContext, emailSender);
+
+        var request = new CreateSubscriptionRequestDto(
+            "multi@example.local",
+            [
+                new CreateSubscriptionEntryDto("Loto", 4, "uniform"),
+                new CreateSubscriptionEntryDto("EuroMillions", 6, "frequency")
+            ]);
+
+        await service.RequestSubscriptionAsync(request, CancellationToken.None);
+
+        var subscriptions = await dbContext.Subscriptions
+            .OrderBy(item => item.Game)
+            .ToArrayAsync();
+
+        Assert.Equal(2, subscriptions.Length);
+        Assert.All(subscriptions, subscription => Assert.Equal(SubscriptionStatus.Pending, subscription.Status));
+        Assert.Contains(
+            subscriptions,
+            item => item.Game == LotteryGame.Loto
+                    && item.GridCount == 4
+                    && item.Strategy == GridGenerationStrategy.Uniform);
+        Assert.Contains(
+            subscriptions,
+            item => item.Game == LotteryGame.EuroMillions
+                    && item.GridCount == 6
+                    && item.Strategy == GridGenerationStrategy.FrequencyWeighted);
+        Assert.Equal(2, emailSender.Messages.Count);
+    }
+
     private static SubscriptionService CreateService(LotteryDbContext dbContext, InMemoryEmailSender emailSender)
     {
         var options = Options.Create(new SubscriptionOptions

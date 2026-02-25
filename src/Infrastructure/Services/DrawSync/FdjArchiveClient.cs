@@ -232,7 +232,7 @@ public sealed partial class FdjArchiveClient(
 
         response.Dispose();
         logger.LogWarning(
-            "Page historique renvoie 304 pour {SourcePageUrl} sans cache local. Nouvelle requete sans condition.",
+            "Page historique renvoie 304 pour {SourcePageUrl} sans cache local. Nouvelle requête sans condition.",
             sourcePageUrl);
         return await client.GetAsync(sourcePageUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
     }
