@@ -1,0 +1,97 @@
+services:
+  postgres:
+    container_name: probaloto-home-postgres
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: probabilites_loto
+      POSTGRES_USER: ${POSTGRES_USER:-probaloto}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+    volumes:
+      - probaloto_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-probaloto} -d probabilites_loto"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    container_name: probaloto-home-api
+    build:
+      context: ..
+      dockerfile: src/Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
+      Admin__ApiKey: ${ADMIN_API_KEY:-dev-admin-key-change-me}
+      # Home leger: pas de Mailhog. Configurer SMTP_* pour activer les envois reels.
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Probabilites Loto & EuroMillions <no-reply@example.local>}
+      Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-false}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8083}
+      SUBSCRIPTIONS_TOKEN_SECRET: ${SUBSCRIPTIONS_TOKEN_SECRET:-dev-only-change-me}
+      Cors__AllowedOrigins__0: http://localhost:8083
+      Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_1:-https://loto.example.com}
+      HealthChecks__Smtp__Enabled: ${HEALTHCHECKS_SMTP_ENABLED:-false}
+
+  worker:
+    container_name: probaloto-home-worker
+    build:
+      context: ..
+      dockerfile: src/Worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
+      # Home leger: pas de Mailhog. Configurer SMTP_* pour activer les envois reels.
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Probabilites Loto & EuroMillions <no-reply@example.local>}
+      Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-false}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8083}
+      SUBSCRIPTIONS_TOKEN_SECRET: ${SUBSCRIPTIONS_TOKEN_SECRET:-dev-only-change-me}
+      Jobs__SendSubscriptions__RunOnStartup: ${JOBS_SEND_SUBSCRIPTIONS_RUN_ON_STARTUP:-false}
+
+  web:
+    container_name: loto
+    build:
+      context: ..
+      dockerfile: src/Web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Api__BaseUrl: http://api:8080
+      Admin__ApiKey: ${ADMIN_API_KEY:-dev-admin-key-change-me}
+      Admin__WebUsername: ${ADMIN_WEB_USERNAME:-admin}
+      Admin__WebPassword: ${ADMIN_WEB_PASSWORD:-dev-admin-ui-password}
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "if command -v curl >/dev/null 2>&1; then curl -fsS http://localhost:8080/health >/dev/null; else wget -q -O- http://localhost:8080/health >/dev/null; fi",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  probaloto_pg_data:
+    name: probaloto_pg_data

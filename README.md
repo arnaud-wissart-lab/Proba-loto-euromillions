@@ -1,6 +1,7 @@
 # Probabilités Loto & EuroMillions
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+[![Déploiement Manuel](https://github.com/arnaud-wissart-lab/Proba-loto-euromillions/actions/workflows/deploy-manual.yml/badge.svg)](https://github.com/arnaud-wissart-lab/Proba-loto-euromillions/actions/workflows/deploy-manual.yml)
 [![Licence: MIT](https://img.shields.io/badge/Licence-MIT-green.svg)](LICENSE)
 
 Application web informative et statistique autour des tirages Loto et EuroMillions, construite en .NET 10 avec une architecture `web + api + worker + postgres`.
@@ -15,7 +16,7 @@ Application web informative et statistique autour des tirages Loto et EuroMillio
 - Exécution locale et déploiement simplifiés via Docker Compose et orchestration .NET Aspire.
 
 ## Démo
-Il n'existe pas de démo publique hébergée en permanence à ce stade.
+- Démo live (home): `http://<hote-ou-domaine-home>:8083` (placeholder à remplacer quand le domaine public est raccordé).
 
 Pour lancer une démo locale complète, utilisez Docker Compose (voir [Démarrage rapide](#démarrage-rapide-docker-compose-recommandé)):
 
@@ -109,6 +110,32 @@ Services disponibles:
 Identifiants admin Web par défaut (dev):
 - utilisateur: `admin`
 - mot de passe: `dev-admin-ui-password`
+
+## Production (home)
+Deploiement manuel disponible via le workflow GitHub Actions **Déploiement Manuel** (`workflow_dispatch`).
+
+- runner cible: `[self-hosted, linux, ci]`
+- variables d'entree: `environment` (defaut `home`), `ref` (defaut `main`)
+- dossier distant maintenu par le script: `/home/arnaud/apps/proba-loto-euromillions`
+
+Secrets SSH requis (niveau organisation):
+- `SSH_HOST`
+- `SSH_USER`
+- `SSH_PRIVATE_KEY`
+- `SSH_PORT` (optionnel, `22` par defaut)
+
+Secrets applicatifs a definir avant exposition publique (les valeurs par defaut du compose sont des placeholders):
+- `POSTGRES_PASSWORD`
+- `ADMIN_API_KEY`
+- `ADMIN_WEB_USERNAME`
+- `ADMIN_WEB_PASSWORD`
+- `SUBSCRIPTIONS_TOKEN_SECRET`
+- `SMTP_*`
+- `PUBLIC_BASE_URL`
+
+Exposition home:
+- Web: `http://<hote>:8083`
+- Healthcheck: `http://127.0.0.1:8083/health`
 
 ## Démarrage avec Aspire
 1. Définir le mot de passe PostgreSQL d'AppHost:

@@ -1,0 +1,51 @@
+name: Déploiement Manuel
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environnement cible (ex: home)"
+        required: true
+        default: home
+        type: string
+      ref:
+        description: "Référence Git à déployer (branche, tag, SHA)"
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, linux, ci]
+    env:
+      DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+      DEPLOY_REF: ${{ inputs.ref }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout de la référence demandée
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup SSH known_hosts
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Exécuter le déploiement home
+        run: |
+          set -euo pipefail
+          chmod +x scripts/deploy-home.sh
+          scripts/deploy-home.sh
