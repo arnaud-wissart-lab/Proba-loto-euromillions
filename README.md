@@ -137,6 +137,26 @@ Exposition home:
 - Web: `http://<hote>:8083`
 - Healthcheck: `http://127.0.0.1:8083/health`
 
+## Exposition publique (NPM)
+Pour publier l'application derrière Nginx Proxy Manager, créer un **Proxy Host** avec les paramètres suivants:
+
+- Domain Names: `loto.arnaudwissart.fr`
+- Forward Hostname / IP: `192.168.1.104`
+- Forward Port: `8083`
+
+Dans l'onglet SSL:
+- demander un certificat **Let's Encrypt**;
+- activer **Force SSL**.
+
+Références utiles pour l'upstream:
+- healthcheck: `/health`
+- port interne du conteneur Web: `8080` (exposé en home via `8083:8080`)
+
+Avant exposition publique, changer les credentials admin via variables d'environnement:
+- `ADMIN_WEB_USERNAME`
+- `ADMIN_WEB_PASSWORD`
+- `ADMIN_API_KEY`
+
 ## Démarrage avec Aspire
 1. Définir le mot de passe PostgreSQL d'AppHost:
 ```powershell
