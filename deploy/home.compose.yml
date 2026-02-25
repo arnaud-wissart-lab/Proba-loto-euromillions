@@ -62,6 +62,7 @@ services:
       Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-false}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8083}
       SUBSCRIPTIONS_TOKEN_SECRET: ${SUBSCRIPTIONS_TOKEN_SECRET:-dev-only-change-me}
+      Jobs__SyncDraws__RunOnStartup: ${JOBS_SYNC_DRAWS_RUN_ON_STARTUP:-true}
       Jobs__SendSubscriptions__RunOnStartup: ${JOBS_SEND_SUBSCRIPTIONS_RUN_ON_STARTUP:-false}
 
   web:
