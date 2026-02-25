@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.IO.Compression;
+using System.Text;
 using System.Text.Json;
 using Application.Abstractions;
 using Application.Models;
@@ -94,31 +95,25 @@ public sealed class DrawSyncService(
             foreach (var archive in archives)
             {
                 var archiveBytes = await archiveClient.DownloadArchiveAsync(archive.DownloadUrl, cancellationToken);
-                using var archiveStream = new MemoryStream(archiveBytes, writable: false);
-                using var zip = new ZipArchive(archiveStream, ZipArchiveMode.Read, leaveOpen: false);
+                var parsedDraws = await ExtractDrawsFromArchivePayloadAsync(
+                    game,
+                    archive,
+                    archiveBytes,
+                    cancellationToken);
 
-                foreach (var entry in zip.Entries.Where(item => item.Length > 0))
+                if (parsedDraws.Count == 0)
                 {
-                    using var entryStream = entry.Open();
-                    using var entryBuffer = new MemoryStream();
-                    await entryStream.CopyToAsync(entryBuffer, cancellationToken);
-                    var entryBytes = entryBuffer.ToArray();
+                    continue;
+                }
 
-                    var parsedDraws = drawFileParser.ParseArchiveEntry(
-                        game,
-                        archive.DownloadUrl.AbsoluteUri,
-                        entry.FullName,
-                        entryBytes);
-
-                    foreach (var parsedDraw in parsedDraws)
+                foreach (var parsedDraw in parsedDraws)
+                {
+                    if (parsedDraw.DrawDate < gameOptions.RuleStartDate)
                     {
-                        if (parsedDraw.DrawDate < gameOptions.RuleStartDate)
-                        {
-                            continue;
-                        }
-
-                        drawByDate[parsedDraw.DrawDate] = (parsedDraw, archive.DownloadUrl.AbsoluteUri);
+                        continue;
                     }
+
+                    drawByDate[parsedDraw.DrawDate] = (parsedDraw, archive.DownloadUrl.AbsoluteUri);
                 }
             }
 
@@ -256,6 +251,133 @@ public sealed class DrawSyncService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return upserted;
+    }
+
+    private async Task<IReadOnlyCollection<ParsedDraw>> ExtractDrawsFromArchivePayloadAsync(
+        LotteryGame game,
+        FdjArchiveDescriptor archive,
+        byte[] payload,
+        CancellationToken cancellationToken)
+    {
+        if (payload.Length == 0)
+        {
+            logger.LogWarning(
+                "Archive vide ignorée pour {Game}: {ArchiveUrl}",
+                game,
+                archive.DownloadUrl);
+            return [];
+        }
+
+        if (TryParseZipPayload(game, archive, payload, cancellationToken, out var zipParsedDraws)
+            && zipParsedDraws.Count > 0)
+        {
+            return zipParsedDraws;
+        }
+
+        var directEntryName = GuessEntryNameFromUrl(archive.DownloadUrl);
+        var directParsedDraws = drawFileParser.ParseArchiveEntry(
+            game,
+            archive.DownloadUrl.AbsoluteUri,
+            directEntryName,
+            payload);
+
+        if (directParsedDraws.Count > 0)
+        {
+            logger.LogInformation(
+                "Archive interprétée comme fichier direct pour {Game}: {ArchiveUrl} ({EntryName})",
+                game,
+                archive.DownloadUrl,
+                directEntryName);
+            return directParsedDraws;
+        }
+
+        logger.LogWarning(
+            "Archive ignorée pour {Game}: {ArchiveUrl}. Aucun tirage exploitable (aperçu payload: {PayloadPreview}).",
+            game,
+            archive.DownloadUrl,
+            BuildPayloadPreview(payload));
+
+        return [];
+    }
+
+    private bool TryParseZipPayload(
+        LotteryGame game,
+        FdjArchiveDescriptor archive,
+        byte[] payload,
+        CancellationToken cancellationToken,
+        out List<ParsedDraw> parsedDraws)
+    {
+        parsedDraws = [];
+
+        try
+        {
+            using var archiveStream = new MemoryStream(payload, writable: false);
+            using var zip = new ZipArchive(archiveStream, ZipArchiveMode.Read, leaveOpen: false);
+
+            foreach (var entry in zip.Entries.Where(item => item.Length > 0))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                using var entryStream = entry.Open();
+                using var entryBuffer = new MemoryStream();
+                entryStream.CopyTo(entryBuffer);
+                var entryBytes = entryBuffer.ToArray();
+
+                var entryParsedDraws = drawFileParser.ParseArchiveEntry(
+                    game,
+                    archive.DownloadUrl.AbsoluteUri,
+                    entry.FullName,
+                    entryBytes);
+
+                if (entryParsedDraws.Count > 0)
+                {
+                    parsedDraws.AddRange(entryParsedDraws);
+                }
+            }
+
+            return true;
+        }
+        catch (InvalidDataException exception)
+        {
+            logger.LogDebug(
+                exception,
+                "Payload non ZIP ou ZIP invalide pour {Game}: {ArchiveUrl}",
+                game,
+                archive.DownloadUrl);
+            return false;
+        }
+    }
+
+    private static string GuessEntryNameFromUrl(Uri downloadUrl)
+    {
+        var entryName = Path.GetFileName(downloadUrl.LocalPath);
+        return string.IsNullOrWhiteSpace(entryName)
+            ? "download.bin"
+            : entryName;
+    }
+
+    private static string BuildPayloadPreview(byte[] payload)
+    {
+        var previewLength = Math.Min(payload.Length, 180);
+        if (previewLength == 0)
+        {
+            return "<vide>";
+        }
+
+        var textPreview = Encoding.UTF8.GetString(payload, 0, previewLength)
+            .Replace('\r', ' ')
+            .Replace('\n', ' ')
+            .Trim();
+
+        if (string.IsNullOrWhiteSpace(textPreview))
+        {
+            var hexLength = Math.Min(payload.Length, 16);
+            return $"hex:{Convert.ToHexString(payload.AsSpan(0, hexLength))}";
+        }
+
+        return payload.Length > previewLength
+            ? $"{textPreview}..."
+            : textPreview;
     }
 
     private async Task<SyncStateEntity> GetOrCreateSyncStateAsync(LotteryGame game, CancellationToken cancellationToken)
