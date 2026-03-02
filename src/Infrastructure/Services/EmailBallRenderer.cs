@@ -15,7 +15,7 @@ internal static class EmailBallRenderer
         var fontSize = size >= 40 ? 15 : 13;
 
         return
-            $"<span style=\"display:inline-block;width:{size}px;height:{size}px;line-height:{size}px;text-align:center;vertical-align:middle;border-radius:50%;margin:0 6px 6px 0;background-color:{background};color:#0f172a;font-size:{fontSize}px;font-weight:800;font-family:Arial,sans-serif;border:1px solid {border};box-sizing:border-box;mso-line-height-rule:exactly;\">{value}</span>";
+            $"<span style=\"display:inline-block;width:{size}px;height:{size}px;line-height:{size}px;text-align:center;vertical-align:middle;border-radius:50%;margin:0 6px 0 0;background-color:{background};color:#0f172a;font-size:{fontSize}px;font-weight:800;font-family:Arial,sans-serif;border:1px solid {border};box-sizing:border-box;mso-line-height-rule:exactly;\">{value}</span>";
     }
 
     public static string RenderBallRow(IEnumerable<int> numbers, bool bonus = false, int size = 30)

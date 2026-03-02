@@ -217,10 +217,10 @@ public sealed class NewsletterDispatchService(
         }
 
         textBuilder.AppendLine();
-        textBuilder.AppendLine("Message informatif: ce service ne predit aucun tirage. Le jeu reste un jeu de hasard.");
+        textBuilder.AppendLine("Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de hasard.");
         textBuilder.AppendLine();
-        textBuilder.AppendLine($"Gerer mes preferences: {preferencesLink}");
-        textBuilder.AppendLine($"Me desinscrire: {unsubscribeLink}");
+        textBuilder.AppendLine($"Gérer mes préférences: {preferencesLink}");
+        textBuilder.AppendLine($"Me désinscrire: {unsubscribeLink}");
 
         var htmlBuilder = new StringBuilder();
         htmlBuilder.Append("""
@@ -242,24 +242,29 @@ public sealed class NewsletterDispatchService(
             htmlBuilder.AppendLine("    <div style=\"margin-bottom:14px;\">");
             htmlBuilder.AppendLine("      <div style=\"padding:12px 14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;\">");
             htmlBuilder.AppendLine($"        <p style=\"margin:0 0 8px;font-weight:700;color:#0f172a;\">Grille {grid.Index}</p>");
-            htmlBuilder.AppendLine("        <div style=\"margin:0 0 2px;white-space:nowrap;overflow-x:auto;\">");
-            htmlBuilder.AppendLine($"          <span style=\"display:inline-block;vertical-align:middle;\">{mainRow}</span>");
+            htmlBuilder.AppendLine("        <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-collapse:collapse;\">");
+            htmlBuilder.AppendLine("          <tr>");
+            htmlBuilder.AppendLine($"            <td style=\"padding:0;vertical-align:middle;\">{mainRow}</td>");
 
             if (grid.Value.BonusNumbers.Count > 0)
             {
-                htmlBuilder.AppendLine("          <span style=\"display:inline-block;vertical-align:middle;margin:0 8px 6px 8px;font-size:11px;font-weight:700;color:#64748b;\">Bonus</span>");
-                htmlBuilder.AppendLine($"          <span style=\"display:inline-block;vertical-align:middle;\">{bonusRow}</span>");
+                htmlBuilder.AppendLine($"            <td style=\"padding:0 0 0 10px;vertical-align:middle;text-align:right;white-space:nowrap;\"><span style=\"display:inline-block;vertical-align:middle;margin:0 8px 0 0;font-size:11px;font-weight:700;color:#64748b;\">Bonus</span>{bonusRow}</td>");
             }
 
-            htmlBuilder.AppendLine("        </div>");
+            htmlBuilder.AppendLine("          </tr>");
+            htmlBuilder.AppendLine("        </table>");
             htmlBuilder.AppendLine("      </div>");
             htmlBuilder.AppendLine("    </div>");
         }
 
         htmlBuilder.AppendLine("  </div>");
-        htmlBuilder.AppendLine("  <p style=\"margin:0 0 12px;font-size:12px;color:#64748b;\">Message informatif: ce service ne predit aucun tirage. Le jeu reste un jeu de hasard.</p>");
-        htmlBuilder.AppendLine($"  <p style=\"margin:0 0 10px;\"><a href=\"{preferencesLink}\" style=\"display:inline-block;padding:11px 16px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;\">Gerer mes preferences</a></p>");
-        htmlBuilder.AppendLine($"  <p style=\"margin:0;\"><a href=\"{unsubscribeLink}\" style=\"display:inline-block;padding:11px 16px;background:#475569;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;\">Me desinscrire</a></p>");
+        htmlBuilder.AppendLine("  <p style=\"margin:0 0 12px;font-size:12px;color:#64748b;\">Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de hasard.</p>");
+        htmlBuilder.AppendLine("  <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"border-collapse:collapse;\">");
+        htmlBuilder.AppendLine("    <tr>");
+        htmlBuilder.AppendLine($"      <td style=\"padding:0;vertical-align:middle;text-align:left;\"><a href=\"{preferencesLink}\" style=\"display:inline-block;padding:11px 16px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;\">Gérer mes préférences</a></td>");
+        htmlBuilder.AppendLine($"      <td style=\"padding:0;vertical-align:middle;text-align:right;\"><a href=\"{unsubscribeLink}\" style=\"display:inline-block;padding:11px 16px;background:#475569;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;\">Me désinscrire</a></td>");
+        htmlBuilder.AppendLine("    </tr>");
+        htmlBuilder.AppendLine("  </table>");
         htmlBuilder.Append("""
   </div>
 </div>
