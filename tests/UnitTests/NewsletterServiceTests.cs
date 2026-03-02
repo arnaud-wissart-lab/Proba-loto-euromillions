@@ -55,9 +55,9 @@ public sealed class NewsletterServiceTests
     }
 
     [Fact]
-    public async Task ConfirmTokenShouldBeSingleUse()
+    public async Task ConfirmTokenShouldStayValidAfterFirstConfirmation()
     {
-        await using var dbContext = CreateDbContext(nameof(ConfirmTokenShouldBeSingleUse));
+        await using var dbContext = CreateDbContext(nameof(ConfirmTokenShouldStayValidAfterFirstConfirmation));
         var emailSender = new InMemoryEmailSender();
         var service = CreateService(dbContext, emailSender);
 
@@ -71,7 +71,8 @@ public sealed class NewsletterServiceTests
         var secondConfirmation = await service.ConfirmAsync(confirmToken, CancellationToken.None);
 
         Assert.True(firstConfirmation.Success);
-        Assert.False(secondConfirmation.Success);
+        Assert.True(secondConfirmation.Success);
+        Assert.Equal("Abonnement déjà confirmé.", secondConfirmation.Message);
     }
 
     private static NewsletterService CreateService(LotteryDbContext dbContext, InMemoryEmailSender emailSender)

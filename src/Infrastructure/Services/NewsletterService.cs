@@ -89,7 +89,6 @@ public sealed class NewsletterService(
 
         subscriber.ConfirmedAtUtc = DateTimeOffset.UtcNow;
         subscriber.IsActive = true;
-        subscriber.ConfirmToken = GenerateToken();
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
