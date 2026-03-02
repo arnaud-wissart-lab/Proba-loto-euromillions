@@ -29,7 +29,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
-      Admin__ApiKey: ${ADMIN_API_KEY:-dev-admin-key-change-me}
       Cors__AllowedOrigins__0: http://localhost:8083
       Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_1:-https://loto.example.com}
       HealthChecks__Smtp__Enabled: ${HEALTHCHECKS_SMTP_ENABLED:-false}
@@ -57,15 +56,14 @@ services:
       context: ..
       dockerfile: src/Web/Dockerfile
     restart: unless-stopped
+    env_file:
+      - ./home.env
     depends_on:
       api:
         condition: service_started
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Api__BaseUrl: http://api:8080
-      Admin__ApiKey: ${ADMIN_API_KEY:-dev-admin-key-change-me}
-      Admin__WebUsername: ${ADMIN_WEB_USERNAME:-admin}
-      Admin__WebPassword: ${ADMIN_WEB_PASSWORD:-dev-admin-ui-password}
     ports:
       - "8083:8080"
     healthcheck:

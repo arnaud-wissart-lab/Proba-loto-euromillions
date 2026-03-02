@@ -150,6 +150,13 @@ Secrets SSH requis (niveau organisation):
 Configuration applicative sur la machine cible (`/home/arnaud/apps/proba-loto-euromillions/deploy/home.env`):
 - modele versionne: `deploy/home.env.example`
 - `scripts/deploy-home.sh` cree automatiquement `deploy/home.env` depuis l'exemple si absent, puis applique `chmod 600`
+- ce fichier est charge par `api`, `worker` et `web` pour garantir une configuration admin coherente.
+
+En cas de lancement manuel (hors script), utiliser explicitement:
+
+```bash
+docker compose -p probaloto-home -f deploy/home.compose.yml --env-file deploy/home.env up -d --build
+```
 
 Variables a definir avant exposition publique (les valeurs par defaut du compose sont des placeholders):
 - `POSTGRES_PASSWORD`
