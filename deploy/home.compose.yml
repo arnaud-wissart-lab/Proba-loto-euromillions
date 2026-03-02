@@ -3,14 +3,14 @@ services:
     container_name: probaloto-home-postgres
     image: postgres:17-alpine
     restart: unless-stopped
+    env_file:
+      - ./home.env
     environment:
       POSTGRES_DB: probabilites_loto
-      POSTGRES_USER: ${POSTGRES_USER:-probaloto}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
     volumes:
       - probaloto_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-probaloto} -d probabilites_loto"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-probaloto} -d probabilites_loto"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -28,7 +28,6 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
       Cors__AllowedOrigins__0: http://localhost:8083
       Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_1:-https://loto.example.com}
       HealthChecks__Smtp__Enabled: ${HEALTHCHECKS_SMTP_ENABLED:-false}
@@ -46,7 +45,6 @@ services:
         condition: service_healthy
     environment:
       DOTNET_ENVIRONMENT: Production
-      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
       Jobs__SyncDraws__RunOnStartup: ${JOBS_SYNC_DRAWS_RUN_ON_STARTUP:-true}
       Jobs__SendSubscriptions__RunOnStartup: ${JOBS_SEND_SUBSCRIPTIONS_RUN_ON_STARTUP:-false}
 

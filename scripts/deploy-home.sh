@@ -197,6 +197,24 @@ if [ ! -f "$ENV_FILE_PATH" ]; then
 fi
 
 chmod 600 "$ENV_FILE_PATH"
+
+if ! grep -Eq '^CONNECTIONSTRINGS__POSTGRES=' "$ENV_FILE_PATH"; then
+  db_user="$(grep -E '^POSTGRES_USER=' "$ENV_FILE_PATH" | tail -n1 | cut -d= -f2-)"
+  db_password="$(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE_PATH" | tail -n1 | cut -d= -f2-)"
+
+  if [ -z "${db_user}" ] || [ -z "${db_password}" ]; then
+    error "CONNECTIONSTRINGS__POSTGRES absent et POSTGRES_USER/POSTGRES_PASSWORD incomplets dans ${ENV_FILE_PATH}."
+    exit 1
+  fi
+
+  log "Ajout automatique de CONNECTIONSTRINGS__POSTGRES dans ${ENV_FILE_PATH}."
+  {
+    printf '\n'
+    printf 'CONNECTIONSTRINGS__POSTGRES=Host=postgres;Port=5432;Database=probabilites_loto;Username=%s;Password=%s\n' "$db_user" "$db_password"
+  } >> "$ENV_FILE_PATH"
+  chmod 600 "$ENV_FILE_PATH"
+fi
+
 compose_base_args+=(--env-file "$ENV_FILE_PATH")
 log "Fichier env utilise: ${ENV_FILE_PATH}"
 

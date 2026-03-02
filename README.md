@@ -102,6 +102,7 @@ Copy-Item .env.example .env
 ```
 
 - en production, utiliser des variables d'environnement injectees par la plateforme (ex: `deploy/home.env` sur la machine cible), pas des secrets en clair dans le depot.
+- ne pas executer `source deploy/home.env`: utiliser `docker compose --env-file ...` (certaines valeurs ne sont pas shell-safe).
 
 ### Fuite de secret: purge historique (documentation uniquement)
 Si un secret a deja ete committe dans l'historique, il faut:
@@ -150,16 +151,19 @@ Secrets SSH requis (niveau organisation):
 Configuration applicative sur la machine cible (`/home/arnaud/apps/proba-loto-euromillions/deploy/home.env`):
 - modele versionne: `deploy/home.env.example`
 - `scripts/deploy-home.sh` cree automatiquement `deploy/home.env` depuis l'exemple si absent, puis applique `chmod 600`
-- ce fichier est charge par `api`, `worker` et `web` pour garantir une configuration admin coherente.
+- ce fichier est charge par `postgres`, `api`, `worker` et `web`.
+- ne pas exporter manuellement `POSTGRES_*` dans le shell avant un `docker compose`.
 
 En cas de lancement manuel (hors script), utiliser explicitement:
 
 ```bash
-docker compose -p probaloto-home -f deploy/home.compose.yml --env-file deploy/home.env up -d --build
+env -i PATH="$PATH" docker compose -p probaloto-home -f deploy/home.compose.yml --env-file deploy/home.env up -d --build
 ```
 
 Variables a definir avant exposition publique (les valeurs par defaut du compose sont des placeholders):
+- `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
+- `CONNECTIONSTRINGS__POSTGRES` (doit rester alignee avec `POSTGRES_USER`/`POSTGRES_PASSWORD`)
 - `ADMIN_API_KEY`
 - `ADMIN_WEB_USERNAME`
 - `ADMIN_WEB_PASSWORD`
@@ -234,7 +238,7 @@ dotnet run --project src/AppHost
 3. Ouvrir le tableau de bord Aspire puis naviguer vers `web`, `api`, `worker`.
 
 ## Variables de configuration importantes
-- `ConnectionStrings__Postgres`
+- `ConnectionStrings__Postgres` / `CONNECTIONSTRINGS__POSTGRES`
 - `Admin__ApiKey` / `ADMIN_API_KEY`
 - `Admin__WebUsername` / `ADMIN_WEB_USERNAME`
 - `Admin__WebPassword` / `ADMIN_WEB_PASSWORD`
