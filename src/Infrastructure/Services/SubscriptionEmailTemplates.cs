@@ -107,30 +107,31 @@ Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de h
             $"  <p style=\"margin:0 0 6px;color:#334155;line-height:1.5;\">Voici vos <strong>{generatedGrids.Grids.Count}</strong> grille(s) pour le tirage du <strong>{intendedDrawDate:dd/MM/yyyy}</strong> ({drawTimeHint}).</p>");
         htmlBuilder.AppendLine($"  <p style=\"margin:0 0 14px;color:#334155;\">Stratégie: <strong>{strategyLabel}</strong></p>");
         htmlBuilder.AppendLine("  <p style=\"margin:0 0 16px;font-size:12px;color:#64748b;\">Rappel: contenu informatif uniquement. Le jeu reste un jeu de hasard.</p>");
-        htmlBuilder.AppendLine("  <ol style=\"margin:0 0 16px;padding-left:20px;\">");
+        htmlBuilder.AppendLine("  <div style=\"margin:0 0 16px;\">");
 
         foreach (var grid in generatedGrids.Grids.Select((value, position) => new { Value = value, Index = position + 1 }))
         {
             var mainRow = EmailBallRenderer.RenderBallRow(grid.Value.MainNumbers);
             var bonusRow = EmailBallRenderer.RenderBallRow(grid.Value.BonusNumbers, bonus: true);
 
-            htmlBuilder.AppendLine("    <li style=\"margin-bottom:14px;\">");
+            htmlBuilder.AppendLine("    <div style=\"margin-bottom:14px;\">");
             htmlBuilder.AppendLine("      <div style=\"padding:12px 14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;\">");
             htmlBuilder.AppendLine($"        <p style=\"margin:0 0 8px;font-weight:700;color:#0f172a;\">Grille {grid.Index}</p>");
-            htmlBuilder.AppendLine($"        <p style=\"margin:0 0 6px;font-size:12px;font-weight:700;color:#64748b;\">Numéros</p>");
-            htmlBuilder.AppendLine($"        <div style=\"margin:0 0 6px;\">{mainRow}</div>");
+            htmlBuilder.AppendLine("        <div style=\"margin:0 0 2px;white-space:nowrap;overflow-x:auto;\">");
+            htmlBuilder.AppendLine($"          <span style=\"display:inline-block;vertical-align:middle;\">{mainRow}</span>");
 
             if (grid.Value.BonusNumbers.Count > 0)
             {
-                htmlBuilder.AppendLine("        <p style=\"margin:0 0 6px;font-size:12px;font-weight:700;color:#64748b;\">Bonus</p>");
-                htmlBuilder.AppendLine($"        <div>{bonusRow}</div>");
+                htmlBuilder.AppendLine("          <span style=\"display:inline-block;vertical-align:middle;margin:0 8px 6px 8px;font-size:11px;font-weight:700;color:#64748b;\">Bonus</span>");
+                htmlBuilder.AppendLine($"          <span style=\"display:inline-block;vertical-align:middle;\">{bonusRow}</span>");
             }
 
+            htmlBuilder.AppendLine("        </div>");
             htmlBuilder.AppendLine("      </div>");
-            htmlBuilder.AppendLine("    </li>");
+            htmlBuilder.AppendLine("    </div>");
         }
 
-        htmlBuilder.AppendLine("  </ol>");
+        htmlBuilder.AppendLine("  </div>");
         htmlBuilder.AppendLine($"  <p style=\"margin:0;\"><a href=\"{unsubscribeLink}\" style=\"color:#2563eb;text-decoration:none;\">Désinscription en 1 clic</a></p>");
         htmlBuilder.Append("""
   </div>
