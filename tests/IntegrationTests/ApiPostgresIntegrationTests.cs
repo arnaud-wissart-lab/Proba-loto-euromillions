@@ -189,7 +189,7 @@ public sealed class ApiPostgresIntegrationTests : IClassFixture<ApiPostgresInteg
         var dbContext = scope.ServiceProvider.GetRequiredService<LotteryDbContext>();
 
         await dbContext.Database.ExecuteSqlRawAsync(
-            """TRUNCATE TABLE draws, email_send_logs, subscriptions, sync_runs, sync_state RESTART IDENTITY CASCADE;""");
+            """TRUNCATE TABLE draws, email_send_logs, mail_dispatch_history, subscriptions, newsletter_subscribers, sync_runs, sync_state RESTART IDENTITY CASCADE;""");
 
         seed(dbContext);
         await dbContext.SaveChangesAsync();
@@ -244,9 +244,13 @@ public sealed class ApiPostgresIntegrationTests : IClassFixture<ApiPostgresInteg
                 Environment.SetEnvironmentVariable("Admin__ApiKey", AdminApiKey);
                 Environment.SetEnvironmentVariable("Subscriptions__PublicBaseUrl", "http://localhost:8080");
                 Environment.SetEnvironmentVariable("Subscriptions__TokenSecret", "integration-secret");
-                Environment.SetEnvironmentVariable("Smtp__Host", "localhost");
-                Environment.SetEnvironmentVariable("Smtp__Port", "2525");
-                Environment.SetEnvironmentVariable("Smtp__UseStartTls", "false");
+                Environment.SetEnvironmentVariable("Mail__Enabled", "false");
+                Environment.SetEnvironmentVariable("Mail__From", "no-reply@example.local");
+                Environment.SetEnvironmentVariable("Mail__FromName", "Proba Loto");
+                Environment.SetEnvironmentVariable("Mail__BaseUrl", "http://localhost:8080");
+                Environment.SetEnvironmentVariable("Mail__Smtp__Host", "localhost");
+                Environment.SetEnvironmentVariable("Mail__Smtp__Port", "2525");
+                Environment.SetEnvironmentVariable("Mail__Smtp__UseSsl", "false");
                 Environment.SetEnvironmentVariable("HealthChecks__Smtp__Enabled", "false");
 
                 _started = true;
@@ -277,9 +281,13 @@ public sealed class ApiPostgresIntegrationTests : IClassFixture<ApiPostgresInteg
                 Environment.SetEnvironmentVariable("Admin__ApiKey", null);
                 Environment.SetEnvironmentVariable("Subscriptions__PublicBaseUrl", null);
                 Environment.SetEnvironmentVariable("Subscriptions__TokenSecret", null);
-                Environment.SetEnvironmentVariable("Smtp__Host", null);
-                Environment.SetEnvironmentVariable("Smtp__Port", null);
-                Environment.SetEnvironmentVariable("Smtp__UseStartTls", null);
+                Environment.SetEnvironmentVariable("Mail__Enabled", null);
+                Environment.SetEnvironmentVariable("Mail__From", null);
+                Environment.SetEnvironmentVariable("Mail__FromName", null);
+                Environment.SetEnvironmentVariable("Mail__BaseUrl", null);
+                Environment.SetEnvironmentVariable("Mail__Smtp__Host", null);
+                Environment.SetEnvironmentVariable("Mail__Smtp__Port", null);
+                Environment.SetEnvironmentVariable("Mail__Smtp__UseSsl", null);
                 Environment.SetEnvironmentVariable("HealthChecks__Smtp__Enabled", null);
 
                 _postgres.DisposeAsync().AsTask().GetAwaiter().GetResult();

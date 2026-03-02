@@ -1,5 +1,6 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Infrastructure.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -7,19 +8,27 @@ using MimeKit;
 namespace Infrastructure.Email;
 
 public sealed class SmtpEmailSender(
-    IOptions<SmtpOptions> options,
+    IOptions<MailOptions> options,
     ILogger<SmtpEmailSender> logger) : IEmailSender
 {
     public async Task SendAsync(EmailMessage email, CancellationToken cancellationToken)
     {
-        var smtpOptions = options.Value;
-        var message = BuildMessage(email, smtpOptions);
+        var mailOptions = options.Value;
+        if (!mailOptions.Enabled)
+        {
+            logger.LogInformation("Envoi e-mail ignore car Mail:Enabled=false.");
+            return;
+        }
+
+        var smtpOptions = mailOptions.Smtp;
+        var message = BuildMessage(email, mailOptions);
+        var secureSocketOptions = ResolveSecureSocketOptions(smtpOptions.UseSsl, smtpOptions.Port);
 
         using var client = new SmtpClient();
         await client.ConnectAsync(
             smtpOptions.Host,
             smtpOptions.Port,
-            smtpOptions.UseStartTls ? SecureSocketOptions.StartTlsWhenAvailable : SecureSocketOptions.None,
+            secureSocketOptions,
             cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(smtpOptions.Username))
@@ -33,10 +42,10 @@ public sealed class SmtpEmailSender(
         logger.LogInformation("Email envoye via {SmtpHost}:{SmtpPort}", smtpOptions.Host, smtpOptions.Port);
     }
 
-    private static MimeMessage BuildMessage(EmailMessage email, SmtpOptions options)
+    private static MimeMessage BuildMessage(EmailMessage email, MailOptions options)
     {
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(options.SenderName, options.SenderAddress));
+        message.From.Add(new MailboxAddress(options.FromName, options.From));
         message.To.Add(MailboxAddress.Parse(email.To));
         message.Subject = email.Subject;
 
@@ -48,5 +57,17 @@ public sealed class SmtpEmailSender(
 
         message.Body = builder.ToMessageBody();
         return message;
+    }
+
+    private static SecureSocketOptions ResolveSecureSocketOptions(bool useSsl, int port)
+    {
+        if (!useSsl)
+        {
+            return SecureSocketOptions.None;
+        }
+
+        return port == 465
+            ? SecureSocketOptions.SslOnConnect
+            : SecureSocketOptions.StartTls;
     }
 }

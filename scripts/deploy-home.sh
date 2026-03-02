@@ -110,7 +110,8 @@ REPO_URL="https://github.com/${REPO_SLUG}.git"
 APP_DIR="/home/arnaud/apps/proba-loto-euromillions"
 COMPOSE_FILE="deploy/home.compose.yml"
 COMPOSE_PROJECT="probaloto-home"
-ENV_FILE_PATH="${APP_DIR}/.env"
+ENV_FILE_PATH="${APP_DIR}/deploy/home.env"
+ENV_FILE_EXAMPLE_PATH="${APP_DIR}/deploy/home.env.example"
 HEALTH_URL="http://127.0.0.1:8083/health"
 HEALTH_TIMEOUT_SECONDS=300
 HEALTH_POLL_SECONDS=5
@@ -185,13 +186,19 @@ if [ ! -f "$COMPOSE_FILE_PATH" ]; then
   exit 1
 fi
 
-if [ -f "$ENV_FILE_PATH" ]; then
-  compose_base_args+=(--env-file "$ENV_FILE_PATH")
-  log "Fichier .env detecte: ${ENV_FILE_PATH}"
-else
-  log "Fichier .env absent (${ENV_FILE_PATH}). Les valeurs par defaut du compose seront utilisees."
-  log "Important: sans SMTP configure, l'abonnement e-mail echouera."
+if [ ! -f "$ENV_FILE_PATH" ]; then
+  if [ ! -f "$ENV_FILE_EXAMPLE_PATH" ]; then
+    error "Fichier de reference introuvable: ${ENV_FILE_EXAMPLE_PATH}"
+    exit 1
+  fi
+
+  log "Fichier env absent (${ENV_FILE_PATH}), creation depuis ${ENV_FILE_EXAMPLE_PATH}."
+  cp "$ENV_FILE_EXAMPLE_PATH" "$ENV_FILE_PATH"
 fi
+
+chmod 600 "$ENV_FILE_PATH"
+compose_base_args+=(--env-file "$ENV_FILE_PATH")
+log "Fichier env utilise: ${ENV_FILE_PATH}"
 
 if docker ps -a --format '{{.Names}}' | grep -Fxq 'loto'; then
   log "Suppression du conteneur historique loto pour liberer le port 8083."

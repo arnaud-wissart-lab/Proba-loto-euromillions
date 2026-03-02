@@ -3,10 +3,12 @@ using Application.Models;
 using Domain.Enums;
 using Domain.Services;
 using Infrastructure;
+using Infrastructure.Options;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 using System.Security.Cryptography;
 using System.Text;
@@ -160,6 +162,100 @@ app.MapPost(
     .ProducesValidationProblem(StatusCodes.Status400BadRequest);
 
 app.MapPost(
+        "/api/v1/newsletter/subscribe",
+        async (NewsletterSubscribeRequestDto request, INewsletterService newsletterService, CancellationToken cancellationToken) =>
+        {
+            var errors = ValidateNewsletterSubscriptionRequest(request);
+            if (errors.Count > 0)
+            {
+                return Results.ValidationProblem(errors);
+            }
+
+            await newsletterService.RequestSubscriptionAsync(request, cancellationToken);
+            return Results.Accepted(value: new
+            {
+                message = "Si l'adresse fournie est valide, un email de confirmation a ete envoye."
+            });
+        })
+    .RequireRateLimiting("subscriptions-post")
+    .WithName("PostNewsletterSubscribe")
+    .WithTags("Newsletter")
+    .WithSummary("Cree ou met a jour un abonnement newsletter et envoie un email de confirmation.")
+    .Accepts<NewsletterSubscribeRequestDto>("application/json")
+    .Produces(StatusCodes.Status202Accepted)
+    .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+app.MapGet(
+        "/api/v1/newsletter/confirm",
+        async (string token, INewsletterService newsletterService, IOptions<MailOptions> mailOptions, CancellationToken cancellationToken) =>
+        {
+            var result = await newsletterService.ConfirmAsync(token, cancellationToken);
+            var redirectUrl = BuildNewsletterRedirectUrl(
+                mailOptions.Value.BaseUrl,
+                "/abonnement/confirmation",
+                result.Success ? "success" : "invalid");
+            return Results.Redirect(redirectUrl);
+        })
+    .WithName("GetNewsletterConfirm")
+    .WithTags("Newsletter")
+    .WithSummary("Confirme un abonnement newsletter puis redirige vers la page web de confirmation.")
+    .Produces(StatusCodes.Status302Found);
+
+app.MapGet(
+        "/api/v1/newsletter/unsubscribe",
+        async (string token, INewsletterService newsletterService, IOptions<MailOptions> mailOptions, CancellationToken cancellationToken) =>
+        {
+            var result = await newsletterService.UnsubscribeAsync(token, cancellationToken);
+            var redirectUrl = BuildNewsletterRedirectUrl(
+                mailOptions.Value.BaseUrl,
+                "/abonnement/desinscription",
+                result.Success ? "success" : "invalid");
+            return Results.Redirect(redirectUrl);
+        })
+    .WithName("GetNewsletterUnsubscribe")
+    .WithTags("Newsletter")
+    .WithSummary("Desactive un abonnement newsletter puis redirige vers la page web de desinscription.")
+    .Produces(StatusCodes.Status302Found);
+
+app.MapGet(
+        "/api/v1/newsletter/preferences",
+        async (string token, INewsletterService newsletterService, CancellationToken cancellationToken) =>
+        {
+            var preferences = await newsletterService.GetPreferencesAsync(token, cancellationToken);
+            return preferences is null
+                ? Results.NotFound(new { message = "Lien de preferences invalide ou expire." })
+                : Results.Ok(preferences);
+        })
+    .WithName("GetNewsletterPreferences")
+    .WithTags("Newsletter")
+    .WithSummary("Recupere les preferences newsletter via token de gestion.")
+    .Produces<NewsletterPreferencesDto>(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status404NotFound);
+
+app.MapPost(
+        "/api/v1/newsletter/preferences",
+        async (NewsletterPreferencesUpdateRequestDto request, INewsletterService newsletterService, CancellationToken cancellationToken) =>
+        {
+            var errors = ValidateNewsletterPreferencesRequest(request);
+            if (errors.Count > 0)
+            {
+                return Results.ValidationProblem(errors);
+            }
+
+            var result = await newsletterService.UpdatePreferencesAsync(request, cancellationToken);
+            return result.Success
+                ? Results.Ok(result)
+                : Results.BadRequest(result);
+        })
+    .WithName("PostNewsletterPreferences")
+    .WithTags("Newsletter")
+    .WithSummary("Met a jour les preferences de grilles via token de gestion.")
+    .Accepts<NewsletterPreferencesUpdateRequestDto>("application/json")
+    .Produces<NewsletterActionResultDto>(StatusCodes.Status200OK)
+    .Produces<NewsletterActionResultDto>(StatusCodes.Status400BadRequest)
+    .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+app.MapPost(
         "/api/subscriptions",
         async (CreateSubscriptionRequestDto request, ISubscriptionService subscriptionService, CancellationToken cancellationToken) =>
         {
@@ -286,6 +382,34 @@ app.MapDelete(
     .WithSummary("Suppression RGPD des données d'abonnement pour un email.")
     .Produces(StatusCodes.Status202Accepted)
     .ProducesValidationProblem(StatusCodes.Status400BadRequest);
+
+app.MapPost(
+        "/api/admin/newsletter/dispatch",
+        async (HttpContext httpContext, INewsletterDispatchService dispatchService, CancellationToken cancellationToken) =>
+        {
+            var configuredApiKey = ResolveAdminApiKey(app.Configuration);
+            if (string.IsNullOrWhiteSpace(configuredApiKey))
+            {
+                return Results.Problem(
+                    "Configuration admin manquante : definir Admin__ApiKey (ou ADMIN_API_KEY).",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
+
+            if (!TryValidateApiKey(httpContext, configuredApiKey))
+            {
+                return Results.Unauthorized();
+            }
+
+            var summary = await dispatchService.DispatchForDueDrawsAsync(DateTimeOffset.UtcNow, force: true, cancellationToken);
+            return Results.Ok(summary);
+        })
+    .WithName("PostAdminNewsletterDispatch")
+    .WithTags("Admin")
+    .WithSummary("Declenche un dispatch newsletter immediat (force=true) pour la date locale courante.")
+    .WithDescription("Protection simple via header X-Api-Key.")
+    .Produces<NewsletterDispatchSummaryDto>(StatusCodes.Status200OK)
+    .Produces(StatusCodes.Status401Unauthorized)
+    .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
 app.MapPost(
         "/api/admin/sync",
@@ -419,6 +543,70 @@ static Dictionary<string, string[]> ValidateSubscriptionRequest(CreateSubscripti
     }
 
     return errors;
+}
+
+static Dictionary<string, string[]> ValidateNewsletterSubscriptionRequest(NewsletterSubscribeRequestDto request)
+{
+    var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+    if (!IsValidEmail(request.Email))
+    {
+        errors["email"] = ["Adresse e-mail invalide."];
+    }
+
+    if (request.LotoGridsCount is < 0 or > 100)
+    {
+        errors["lotoGridsCount"] = ["La valeur doit etre comprise entre 0 et 100."];
+    }
+
+    if (request.EuroMillionsGridsCount is < 0 or > 100)
+    {
+        errors["euroMillionsGridsCount"] = ["La valeur doit etre comprise entre 0 et 100."];
+    }
+
+    if (request.LotoGridsCount == 0 && request.EuroMillionsGridsCount == 0)
+    {
+        errors["preferences"] = ["Au moins une grille doit etre demandee."];
+    }
+
+    return errors;
+}
+
+static Dictionary<string, string[]> ValidateNewsletterPreferencesRequest(NewsletterPreferencesUpdateRequestDto request)
+{
+    var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
+
+    if (string.IsNullOrWhiteSpace(request.Token))
+    {
+        errors["token"] = ["Token requis."];
+    }
+
+    if (request.LotoGridsCount is < 0 or > 100)
+    {
+        errors["lotoGridsCount"] = ["La valeur doit etre comprise entre 0 et 100."];
+    }
+
+    if (request.EuroMillionsGridsCount is < 0 or > 100)
+    {
+        errors["euroMillionsGridsCount"] = ["La valeur doit etre comprise entre 0 et 100."];
+    }
+
+    if (request.LotoGridsCount == 0 && request.EuroMillionsGridsCount == 0)
+    {
+        errors["preferences"] = ["Au moins une grille doit etre demandee."];
+    }
+
+    return errors;
+}
+
+static string BuildNewsletterRedirectUrl(string baseUrl, string relativePath, string status)
+{
+    var effectiveBaseUrl = string.IsNullOrWhiteSpace(baseUrl)
+        ? "http://localhost:8080"
+        : baseUrl.TrimEnd('/');
+    var normalizedPath = relativePath.StartsWith('/') ? relativePath : $"/{relativePath}";
+
+    return $"{effectiveBaseUrl}{normalizedPath}?status={Uri.EscapeDataString(status)}";
 }
 
 static bool IsValidEmail(string rawEmail) =>

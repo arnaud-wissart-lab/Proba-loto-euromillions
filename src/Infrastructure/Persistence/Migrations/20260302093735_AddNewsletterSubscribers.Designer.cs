@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(LotteryDbContext))]
-    partial class LotteryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260302093735_AddNewsletterSubscribers")]
+    partial class AddNewsletterSubscribers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -92,37 +95,6 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("SubscriptionId", "IntendedDrawDate");
 
                     b.ToTable("email_send_logs", (string)null);
-                });
-
-            modelBuilder.Entity("Infrastructure.Persistence.Entities.MailDispatchHistoryEntity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateOnly>("DrawDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Game")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<int>("GridsCountSent")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("SentAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("SubscriberId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubscriberId", "Game", "DrawDate")
-                        .IsUnique();
-
-                    b.ToTable("mail_dispatch_history", (string)null);
                 });
 
             modelBuilder.Entity("Infrastructure.Persistence.Entities.NewsletterSubscriberEntity", b =>
@@ -320,22 +292,6 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Subscription");
-                });
-
-            modelBuilder.Entity("Infrastructure.Persistence.Entities.MailDispatchHistoryEntity", b =>
-                {
-                    b.HasOne("Infrastructure.Persistence.Entities.NewsletterSubscriberEntity", "Subscriber")
-                        .WithMany("MailDispatchHistory")
-                        .HasForeignKey("SubscriberId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Subscriber");
-                });
-
-            modelBuilder.Entity("Infrastructure.Persistence.Entities.NewsletterSubscriberEntity", b =>
-                {
-                    b.Navigation("MailDispatchHistory");
                 });
 
             modelBuilder.Entity("Infrastructure.Persistence.Entities.SubscriptionEntity", b =>

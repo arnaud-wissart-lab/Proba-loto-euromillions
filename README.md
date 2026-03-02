@@ -124,18 +124,19 @@ Secrets SSH requis (niveau organisation):
 - `SSH_PRIVATE_KEY`
 - `SSH_PORT` (optionnel, `22` par defaut)
 
-Configuration applicative sur la machine cible (`/home/arnaud/apps/proba-loto-euromillions/.env`):
+Configuration applicative sur la machine cible (`/home/arnaud/apps/proba-loto-euromillions/deploy/home.env`):
 - modele versionne: `deploy/home.env.example`
-- le script de deploiement charge explicitement ce fichier s'il existe
+- `scripts/deploy-home.sh` cree automatiquement `deploy/home.env` depuis l'exemple si absent, puis applique `chmod 600`
 
 Variables a definir avant exposition publique (les valeurs par defaut du compose sont des placeholders):
 - `POSTGRES_PASSWORD`
 - `ADMIN_API_KEY`
 - `ADMIN_WEB_USERNAME`
 - `ADMIN_WEB_PASSWORD`
-- `SUBSCRIPTIONS_TOKEN_SECRET`
-- `SMTP_*` (obligatoire pour l'abonnement e-mail)
-- `PUBLIC_BASE_URL`
+- `MAIL__ENABLED`
+- `MAIL__FROM`, `MAIL__FROMNAME`, `MAIL__BASEURL`
+- `MAIL__SMTP__HOST`, `MAIL__SMTP__PORT`, `MAIL__SMTP__USESSL`, `MAIL__SMTP__USERNAME`, `MAIL__SMTP__PASSWORD`
+- `MAIL__SCHEDULE__SENDHOURLOCAL`, `MAIL__SCHEDULE__SENDMINUTELOCAL`, `MAIL__SCHEDULE__TIMEZONE`, `MAIL__SCHEDULE__FORCE`
 
 Exposition home:
 - Web: `http://<hote>:8083`
@@ -144,7 +145,32 @@ Exposition home:
 Important:
 - endpoint healthcheck Web: `/health`
 - port interne du conteneur Web: `8080` (publie en home via `8083:8080`)
-- sans SMTP valide, `POST /api/subscriptions` echoue et l'abonnement ne peut pas etre enregistre.
+- sans SMTP valide, `POST /api/v1/newsletter/subscribe` echoue et l'abonnement ne peut pas etre enregistre.
+
+## Mail (Brevo)
+Configuration recommandee en mode home/prod-like: `deploy/home.env` (secrets stockes uniquement sur la machine cible).
+
+Variables minimales pour Brevo SMTP relay:
+- `MAIL__ENABLED=true`
+- `MAIL__FROM=contact@EXAMPLE.TLD`
+- `MAIL__FROMNAME=Proba Loto`
+- `MAIL__BASEURL=https://loto.arnaudwissart.fr`
+- `MAIL__SMTP__HOST=smtp-relay.brevo.com`
+- `MAIL__SMTP__PORT=587`
+- `MAIL__SMTP__USESSL=true`
+- `MAIL__SMTP__USERNAME=<login SMTP Brevo>`
+- `MAIL__SMTP__PASSWORD=<cle SMTP Brevo>`
+- `MAIL__SCHEDULE__FORCE=false` (mettre `true` ponctuellement pour forcer le prochain run worker, puis remettre `false`)
+
+Les liens de confirmation/desinscription/preferences utilisent `MAIL__BASEURL`.
+
+## Envoi automatique selon calendrier des tirages
+- aucun envoi hebdomadaire fixe: le worker s'exécute fréquemment et déclenche selon la date locale configurée;
+- horaire d'envoi local configurable via `MAIL__SCHEDULE__SENDHOURLOCAL` + `MAIL__SCHEDULE__SENDMINUTELOCAL` + `MAIL__SCHEDULE__TIMEZONE`;
+- règles appliquées:
+  - EuroMillions: mardi + vendredi
+  - Loto: lundi + mercredi + samedi
+- idempotence: un abonné ne reçoit pas deux fois le même pack `(subscriber, game, drawDate)` grâce à `mail_dispatch_history` (contrainte unique).
 
 ## Exposition publique (NPM)
 Pour publier l'application derrière Nginx Proxy Manager, créer un **Proxy Host** avec les paramètres suivants:
@@ -183,9 +209,10 @@ dotnet run --project src/AppHost
 - `Admin__WebUsername` / `ADMIN_WEB_USERNAME`
 - `Admin__WebPassword` / `ADMIN_WEB_PASSWORD`
 - `Api__BaseUrl`
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
-- `PUBLIC_BASE_URL`
-- `SUBSCRIPTIONS_TOKEN_SECRET`
+- `MAIL__ENABLED`
+- `MAIL__FROM`, `MAIL__FROMNAME`, `MAIL__BASEURL`
+- `MAIL__SMTP__HOST`, `MAIL__SMTP__PORT`, `MAIL__SMTP__USESSL`, `MAIL__SMTP__USERNAME`, `MAIL__SMTP__PASSWORD`
+- `MAIL__SCHEDULE__SENDHOURLOCAL`, `MAIL__SCHEDULE__SENDMINUTELOCAL`, `MAIL__SCHEDULE__TIMEZONE`, `MAIL__SCHEDULE__FORCE`
 - `HealthChecks__Smtp__Enabled`
 - `Jobs__SyncDraws__*`, `Jobs__SendSubscriptions__*`
 - `DrawSync__Loto__*`, `DrawSync__EuroMillions__*`
@@ -202,11 +229,12 @@ dotnet test --collect:"XPlat Code Coverage"
 - `GET /api/status`
 - `GET /api/stats/{game}`
 - `POST /api/grids/generate`
-- `POST /api/subscriptions`
-- `GET /api/subscriptions/confirm`
-- `GET /api/subscriptions/unsubscribe`
-- `GET /api/subscriptions/status`
-- `DELETE /api/subscriptions/data`
+- `POST /api/v1/newsletter/subscribe`
+- `GET /api/v1/newsletter/confirm`
+- `GET /api/v1/newsletter/unsubscribe`
+- `GET /api/v1/newsletter/preferences`
+- `POST /api/v1/newsletter/preferences`
+- `POST /api/admin/newsletter/dispatch`
 - `POST /api/admin/sync`
 - `GET /api/admin/sync-runs`
 

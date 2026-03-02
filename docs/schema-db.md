@@ -30,6 +30,27 @@ erDiagram
         date LastSentForDrawDate
     }
 
+    NEWSLETTER_SUBSCRIBERS {
+        uuid Id PK
+        citext Email UNIQUE
+        timestamptz CreatedAtUtc
+        timestamptz ConfirmedAtUtc
+        string ConfirmToken UNIQUE
+        string UnsubscribeToken UNIQUE
+        bool IsActive
+        int LotoGridsCount
+        int EuroMillionsGridsCount
+    }
+
+    MAIL_DISPATCH_HISTORY {
+        uuid Id PK
+        uuid SubscriberId FK
+        string Game
+        date DrawDate
+        timestamptz SentAtUtc
+        int GridsCountSent
+    }
+
     EMAIL_SEND_LOGS {
         uuid Id PK
         uuid SubscriptionId FK
@@ -59,9 +80,12 @@ erDiagram
     }
 
     SUBSCRIPTIONS ||--o{ EMAIL_SEND_LOGS : "a des envois"
+    NEWSLETTER_SUBSCRIBERS ||--o{ MAIL_DISPATCH_HISTORY : "historique d'envoi"
 ```
 
 Notes:
 - `draws` est unique par `(Game, DrawDate)`.
 - `sync_state` contient l'etat courant par jeu (dont cache HTTP FDJ).
 - `email_send_logs` trace les envois effectifs et les echecs par abonnement.
+- `newsletter_subscribers` stocke les abonnes newsletter (double opt-in + preferences Loto/EuroMillions).
+- `mail_dispatch_history` garantit l'idempotence des packs envoyes via la contrainte unique `(SubscriberId, Game, DrawDate)`.

@@ -88,6 +88,24 @@ public sealed class LotteryApiClient(
         }
     }
 
+    public async Task<bool> RequestNewsletterSubscriptionAsync(
+        ApiNewsletterSubscribeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var client = httpClientFactory.CreateClient(ClientName);
+
+        try
+        {
+            using var response = await client.PostAsJsonAsync("/api/v1/newsletter/subscribe", request, cancellationToken);
+            return response.StatusCode == System.Net.HttpStatusCode.Accepted;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Impossible de creer l'abonnement newsletter.");
+            return false;
+        }
+    }
+
     public async Task<ApiSubscriptionActionResponse?> ConfirmSubscriptionAsync(
         string token,
         CancellationToken cancellationToken)
@@ -102,6 +120,53 @@ public sealed class LotteryApiClient(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Impossible de confirmer l'abonnement.");
+            return null;
+        }
+    }
+
+    public async Task<ApiNewsletterPreferencesResponse?> GetNewsletterPreferencesAsync(
+        string token,
+        CancellationToken cancellationToken)
+    {
+        var client = httpClientFactory.CreateClient(ClientName);
+
+        try
+        {
+            var escapedToken = Uri.EscapeDataString(token);
+            using var response = await client.GetAsync($"/api/v1/newsletter/preferences?token={escapedToken}", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<ApiNewsletterPreferencesResponse>(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Impossible de recuperer les preferences newsletter.");
+            return null;
+        }
+    }
+
+    public async Task<ApiSubscriptionActionResponse?> UpdateNewsletterPreferencesAsync(
+        ApiNewsletterPreferencesUpdateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var client = httpClientFactory.CreateClient(ClientName);
+
+        try
+        {
+            using var response = await client.PostAsJsonAsync("/api/v1/newsletter/preferences", request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiSubscriptionActionResponse>(cancellationToken);
+            }
+
+            return await response.Content.ReadFromJsonAsync<ApiSubscriptionActionResponse>(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Impossible de mettre a jour les preferences newsletter.");
             return null;
         }
     }

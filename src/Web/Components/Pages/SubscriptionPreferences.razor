@@ -1,0 +1,160 @@
+@page "/abonnement/preferences"
+@inject LotteryApiClient LotteryApiClient
+@inject ILogger<SubscriptionPreferences> Logger
+
+<PageTitle>Preferences newsletter</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="page-container">
+    <MudPaper Elevation="1" Class="section-panel">
+        <MudText Typo="Typo.h4" GutterBottom="true">Preferences</MudText>
+
+        @if (_isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true">
+                @_errorMessage
+            </MudAlert>
+        }
+        else
+        {
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.caption">@_email</MudText>
+
+                <MudNumericField T="int"
+                                 Label="Nombre de grilles Loto"
+                                 Variant="Variant.Outlined"
+                                 Min="0"
+                                 Max="100"
+                                 Immediate="true"
+                                 @bind-Value="_lotoGridsCount" />
+
+                <MudNumericField T="int"
+                                 Label="Nombre de grilles EuroMillions"
+                                 Variant="Variant.Outlined"
+                                 Min="0"
+                                 Max="100"
+                                 Immediate="true"
+                                 @bind-Value="_euroMillionsGridsCount" />
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="_isSaving"
+                           OnClick="@SaveAsync">
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                    }
+                    Enregistrer mes preferences
+                </MudButton>
+            </MudStack>
+        }
+    </MudPaper>
+
+    @if (_saved)
+    {
+        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+            Preferences mises a jour.
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")]
+    private string? Token { get; set; }
+
+    private bool _isLoading;
+    private bool _isSaving;
+    private bool _saved;
+    private string? _errorMessage;
+    private string? _loadedToken;
+    private string _email = string.Empty;
+    private int _lotoGridsCount;
+    private int _euroMillionsGridsCount;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.Equals(_loadedToken, Token, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _loadedToken = Token;
+        _saved = false;
+        _errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _errorMessage = "Lien de preferences invalide (token manquant).";
+            return;
+        }
+
+        _isLoading = true;
+        try
+        {
+            var preferences = await LotteryApiClient.GetNewsletterPreferencesAsync(Token, CancellationToken.None);
+            if (preferences is null)
+            {
+                _errorMessage = "Lien de preferences invalide ou expire.";
+                return;
+            }
+
+            _email = preferences.Email;
+            _lotoGridsCount = preferences.LotoGridsCount;
+            _euroMillionsGridsCount = preferences.EuroMillionsGridsCount;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Erreur de chargement des preferences newsletter.");
+            _errorMessage = "Erreur inattendue lors du chargement des preferences.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Token))
+        {
+            _errorMessage = "Lien de preferences invalide (token manquant).";
+            return;
+        }
+
+        _saved = false;
+        _errorMessage = null;
+        _isSaving = true;
+
+        try
+        {
+            var result = await LotteryApiClient.UpdateNewsletterPreferencesAsync(
+                new ApiNewsletterPreferencesUpdateRequest
+                {
+                    Token = Token,
+                    LotoGridsCount = Math.Clamp(_lotoGridsCount, 0, 100),
+                    EuroMillionsGridsCount = Math.Clamp(_euroMillionsGridsCount, 0, 100)
+                },
+                CancellationToken.None);
+
+            if (result is null || !result.Success)
+            {
+                _errorMessage = result?.Message ?? "Impossible de mettre a jour les preferences.";
+                return;
+            }
+
+            _saved = true;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Erreur de mise a jour des preferences newsletter.");
+            _errorMessage = "Erreur inattendue lors de l'enregistrement.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

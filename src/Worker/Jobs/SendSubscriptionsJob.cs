@@ -1,34 +1,45 @@
 using Quartz;
 using Application.Abstractions;
+using Infrastructure.Options;
 using Microsoft.Extensions.Options;
 
 namespace Worker.Jobs;
 
 public sealed class SendSubscriptionsJob(
-    ISubscriptionDispatchService subscriptionDispatchService,
+    INewsletterDispatchService newsletterDispatchService,
     IOptions<SendSubscriptionsJobOptions> options,
+    IOptions<MailOptions> mailOptions,
     ILogger<SendSubscriptionsJob> logger) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
     {
         var currentOptions = options.Value;
+        var forceDispatch = mailOptions.Value.Schedule.Force;
 
         logger.LogInformation(
-            "Exécution de {JobName} à {ExecutionTimeUtc} (cron={Cron}, timezone={TimeZone})",
+            "Execution de {JobName} a {ExecutionTimeUtc} (cron={Cron}, timezone={TimeZone}, force={Force})",
             nameof(SendSubscriptionsJob),
             DateTimeOffset.UtcNow,
             currentOptions.Cron,
-            currentOptions.TimeZoneId);
+            currentOptions.TimeZoneId,
+            forceDispatch);
 
-        var summary = await subscriptionDispatchService.SendForUpcomingDrawsAsync(DateTimeOffset.UtcNow, context.CancellationToken);
+        var summary = await newsletterDispatchService.DispatchForDueDrawsAsync(
+            DateTimeOffset.UtcNow,
+            forceDispatch,
+            context.CancellationToken);
 
         logger.LogInformation(
-            "{JobName} terminé : active={ActiveCount}, sent={SentCount}, failed={FailedCount}, skipped={SkippedCount}, referenceDate={ReferenceDate}",
+            "{JobName} termine : localDate={LocalDate}, timezone={TimeZone}, scheduleOpen={IsScheduleWindowOpen}, games=[{Games}], subscribers={Subscribers}, sent={SentCount}, skipped={SkippedCount}, errors={ErrorCount}, force={Force}",
             nameof(SendSubscriptionsJob),
-            summary.ActiveSubscriptions,
+            summary.LocalDate,
+            summary.TimeZone,
+            summary.IsScheduleWindowOpen,
+            string.Join(", ", summary.DispatchedGames),
+            summary.TotalSubscribersConsidered,
             summary.SentCount,
-            summary.FailedCount,
             summary.SkippedCount,
-            summary.ReferenceDate);
+            summary.ErrorCount,
+            summary.Force);
     }
 }

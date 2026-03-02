@@ -6,3 +6,4 @@ TestResults/
 *.suo
 *.log
 ops/.env
+deploy/home.env

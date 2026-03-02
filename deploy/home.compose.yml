@@ -21,6 +21,8 @@ services:
       context: ..
       dockerfile: src/Api/Dockerfile
     restart: unless-stopped
+    env_file:
+      - ./home.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,15 +30,6 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
       Admin__ApiKey: ${ADMIN_API_KEY:-dev-admin-key-change-me}
-      # Home leger: pas de Mailhog. Configurer SMTP_* pour activer les envois reels.
-      SMTP_HOST: ${SMTP_HOST:-localhost}
-      SMTP_PORT: ${SMTP_PORT:-25}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-Probabilites Loto & EuroMillions <no-reply@example.local>}
-      Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-false}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8083}
-      SUBSCRIPTIONS_TOKEN_SECRET: ${SUBSCRIPTIONS_TOKEN_SECRET:-dev-only-change-me}
       Cors__AllowedOrigins__0: http://localhost:8083
       Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_1:-https://loto.example.com}
       HealthChecks__Smtp__Enabled: ${HEALTHCHECKS_SMTP_ENABLED:-false}
@@ -47,21 +40,14 @@ services:
       context: ..
       dockerfile: src/Worker/Dockerfile
     restart: unless-stopped
+    env_file:
+      - ./home.env
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       DOTNET_ENVIRONMENT: Production
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=probabilites_loto;Username=${POSTGRES_USER:-probaloto};Password=${POSTGRES_PASSWORD:-change-me-local-only}
-      # Home leger: pas de Mailhog. Configurer SMTP_* pour activer les envois reels.
-      SMTP_HOST: ${SMTP_HOST:-localhost}
-      SMTP_PORT: ${SMTP_PORT:-25}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-Probabilites Loto & EuroMillions <no-reply@example.local>}
-      Smtp__UseStartTls: ${SMTP_USE_STARTTLS:-false}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8083}
-      SUBSCRIPTIONS_TOKEN_SECRET: ${SUBSCRIPTIONS_TOKEN_SECRET:-dev-only-change-me}
       Jobs__SyncDraws__RunOnStartup: ${JOBS_SYNC_DRAWS_RUN_ON_STARTUP:-true}
       Jobs__SendSubscriptions__RunOnStartup: ${JOBS_SEND_SUBSCRIPTIONS_RUN_ON_STARTUP:-false}
 

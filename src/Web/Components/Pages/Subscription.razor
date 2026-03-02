@@ -2,85 +2,46 @@
 @inject LotteryApiClient LotteryApiClient
 @inject ILogger<Subscription> Logger
 
-<PageTitle>Abonnement</PageTitle>
+<PageTitle>S'abonner</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="page-container">
+<MudContainer MaxWidth="MaxWidth.Small" Class="page-container">
     <MudPaper Elevation="1" Class="section-panel">
-        <MudText Typo="Typo.h4" GutterBottom="true">Abonnement e-mail</MudText>
-        <MudText Typo="Typo.body2">
-            Recevez la veille de chaque tirage vos grilles calculées (double opt-in).
-            Vous pouvez activer Loto, EuroMillions ou les deux dans une seule demande.
-        </MudText>
+        <MudText Typo="Typo.h4" GutterBottom="true">S'abonner par e-mail</MudText>
+        <MudText Typo="Typo.body2">Choisissez le nombre de grilles a recevoir pour chaque tirage.</MudText>
 
-        <MudGrid Class="mt-4">
-            <MudItem xs="12">
-                <MudTextField Label="Adresse e-mail"
-                              Variant="Variant.Outlined"
-                              Immediate="true"
-                              @bind-Value="_email" />
-            </MudItem>
-            <MudItem xs="12">
-                <MudText Typo="Typo.subtitle2">Jeux et paramètres</MudText>
-                <MudText Typo="Typo.caption">Cochez un ou plusieurs jeux.</MudText>
-            </MudItem>
-        </MudGrid>
+        <MudStack Spacing="2" Class="mt-4">
+            <MudTextField Label="Adresse e-mail"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          @bind-Value="_email" />
 
-        @foreach (var option in _options)
-        {
-            <MudPaper Elevation="0" Class="subscription-option mt-3">
-                <MudCheckBox T="bool" @bind-Value="option.Selected" Label="@($"Recevoir des grilles {option.Game}")" />
+            <MudNumericField T="int"
+                             Label="Nombre de grilles Loto"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Max="100"
+                             Immediate="true"
+                             @bind-Value="_lotoGridsCount" />
 
-                @if (option.Selected)
+            <MudNumericField T="int"
+                             Label="Nombre de grilles EuroMillions"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Max="100"
+                             Immediate="true"
+                             @bind-Value="_euroMillionsGridsCount" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="_isSubmitting"
+                       OnClick="@SubmitAsync">
+                @if (_isSubmitting)
                 {
-                    <MudGrid Class="mt-2 subscription-grid">
-                        <MudItem xs="12" md="6">
-                            <MudNumericField T="int"
-                                             Label="Nombre de grilles"
-                                             Variant="Variant.Outlined"
-                                             Min="1"
-                                             Max="100"
-                                             Immediate="true"
-                                             @bind-Value="option.GridCount" />
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudSelect T="string" Label="Stratégie" Variant="Variant.Outlined" @bind-Value="option.Strategy">
-                                <MudSelectItem T="string" Value="@("uniform")">A) Aléatoire (uniforme)</MudSelectItem>
-                                <MudSelectItem T="string" Value="@("frequency")">B) Pondéré par fréquence</MudSelectItem>
-                                <MudSelectItem T="string" Value="@("recency")">C) Pondéré par récence</MudSelectItem>
-                            </MudSelect>
-                        </MudItem>
-                    </MudGrid>
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
                 }
-            </MudPaper>
-        }
-
-        <MudPaper Elevation="0" Class="strategy-help-card">
-            <MudText Typo="Typo.subtitle2">Comprendre les stratégies proposées</MudText>
-            <ul class="strategy-help-list">
-                <li><strong>A) Aléatoire (uniforme)</strong> : tous les numéros ont exactement le même poids.</li>
-                <li><strong>B) Pondéré par fréquence</strong> : les numéros sortis plus souvent dans l'historique reçoivent plus de poids.</li>
-                <li><strong>C) Pondéré par récence</strong> : les numéros vus récemment reçoivent plus de poids que les plus anciens.</li>
-            </ul>
-            <MudText Typo="Typo.caption">
-                Dans tous les cas, cela reste un calcul statistique informatif : il n'y a pas de prédiction certaine.
-            </MudText>
-        </MudPaper>
-
-        <MudText Typo="Typo.caption" Class="mt-3">
-            Confirmation envoyée par e-mail pour chaque jeu sélectionné.
-        </MudText>
-
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   Disabled="_isSubmitting"
-                   OnClick="@SubmitAsync"
-                   Class="mt-3">
-            @if (_isSubmitting)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
-            }
-            S'abonner
-        </MudButton>
+                S'abonner
+            </MudButton>
+        </MudStack>
     </MudPaper>
 
     @if (!string.IsNullOrWhiteSpace(_errorMessage))
@@ -93,18 +54,15 @@
     @if (_submitted)
     {
         <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-4">
-            Si l'adresse fournie est valide, un e-mail de confirmation a été envoyé pour chaque jeu sélectionné.
+            Si l'adresse fournie est valide, un e-mail de confirmation a ete envoye.
         </MudAlert>
     }
 </MudContainer>
 
 @code {
     private string _email = string.Empty;
-    private readonly List<SubscriptionOption> _options =
-    [
-        new("Loto", selected: true),
-        new("EuroMillions")
-    ];
+    private int _lotoGridsCount = 5;
+    private int _euroMillionsGridsCount = 5;
     private bool _isSubmitting;
     private bool _submitted;
     private string? _errorMessage;
@@ -120,27 +78,28 @@
             return;
         }
 
+        if (_lotoGridsCount == 0 && _euroMillionsGridsCount == 0)
+        {
+            _errorMessage = "Choisissez au moins une grille (Loto ou EuroMillions).";
+            return;
+        }
+
         _isSubmitting = true;
 
         try
         {
-            var entries = GetSelectedEntries();
-            if (entries.Count == 0)
-            {
-                return;
-            }
-
-            var success = await LotteryApiClient.RequestSubscriptionAsync(
-                new ApiCreateSubscriptionRequest
+            var success = await LotteryApiClient.RequestNewsletterSubscriptionAsync(
+                new ApiNewsletterSubscribeRequest
                 {
                     Email = _email,
-                    Entries = entries
+                    LotoGridsCount = Math.Clamp(_lotoGridsCount, 0, 100),
+                    EuroMillionsGridsCount = Math.Clamp(_euroMillionsGridsCount, 0, 100)
                 },
                 CancellationToken.None);
 
             if (!success)
             {
-                _errorMessage = "L'abonnement n'a pas pu être enregistré. Réessayez plus tard.";
+                _errorMessage = "L'abonnement n'a pas pu etre enregistre. Reessayez plus tard.";
                 return;
             }
 
@@ -148,7 +107,7 @@
         }
         catch (Exception exception)
         {
-            Logger.LogError(exception, "Erreur lors de la demande d'abonnement.");
+            Logger.LogError(exception, "Erreur lors de la demande d'abonnement newsletter.");
             _errorMessage = "Erreur inattendue lors de l'abonnement.";
         }
         finally
@@ -157,37 +116,6 @@
         }
     }
 
-    private IReadOnlyCollection<ApiSubscriptionEntryRequest> GetSelectedEntries()
-    {
-        var selectedEntries = _options
-            .Where(option => option.Selected)
-            .Select(option => new ApiSubscriptionEntryRequest
-            {
-                Game = option.Game,
-                GridCount = Math.Clamp(option.GridCount, 1, 100),
-                Strategy = option.Strategy
-            })
-            .ToArray();
-
-        if (selectedEntries.Length == 0)
-        {
-            _errorMessage = "Sélectionnez au moins un jeu.";
-        }
-
-        return selectedEntries;
-    }
-
     private static bool IsValidEmail(string email) =>
         !string.IsNullOrWhiteSpace(email) && System.Net.Mail.MailAddress.TryCreate(email.Trim(), out _);
-
-    private sealed class SubscriptionOption(string game, bool selected = false)
-    {
-        public string Game { get; } = game;
-
-        public bool Selected { get; set; } = selected;
-
-        public int GridCount { get; set; } = 5;
-
-        public string Strategy { get; set; } = "uniform";
-    }
 }

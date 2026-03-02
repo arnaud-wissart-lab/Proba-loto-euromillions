@@ -9,6 +9,10 @@ public sealed class LotteryDbContext(DbContextOptions<LotteryDbContext> options)
 
     public DbSet<SubscriptionEntity> Subscriptions => Set<SubscriptionEntity>();
 
+    public DbSet<NewsletterSubscriberEntity> NewsletterSubscribers => Set<NewsletterSubscriberEntity>();
+
+    public DbSet<MailDispatchHistoryEntity> MailDispatchHistory => Set<MailDispatchHistoryEntity>();
+
     public DbSet<EmailSendLogEntity> EmailSendLogs => Set<EmailSendLogEntity>();
 
     public DbSet<SyncRunEntity> SyncRuns => Set<SyncRunEntity>();
@@ -49,6 +53,34 @@ public sealed class LotteryDbContext(DbContextOptions<LotteryDbContext> options)
         subscription.HasIndex(entity => new { entity.Email, entity.Game, entity.Status });
         subscription.HasIndex(entity => entity.ConfirmTokenHash).IsUnique();
         subscription.HasIndex(entity => entity.UnsubTokenHash).IsUnique();
+
+        var newsletterSubscriber = modelBuilder.Entity<NewsletterSubscriberEntity>();
+        newsletterSubscriber.ToTable("newsletter_subscribers");
+        newsletterSubscriber.HasKey(entity => entity.Id);
+        newsletterSubscriber.Property(entity => entity.Email).IsRequired().HasColumnType("citext").HasMaxLength(320);
+        newsletterSubscriber.Property(entity => entity.CreatedAtUtc).HasColumnType("timestamp with time zone");
+        newsletterSubscriber.Property(entity => entity.ConfirmedAtUtc).HasColumnType("timestamp with time zone");
+        newsletterSubscriber.Property(entity => entity.ConfirmToken).IsRequired().HasMaxLength(128);
+        newsletterSubscriber.Property(entity => entity.UnsubscribeToken).IsRequired().HasMaxLength(128);
+        newsletterSubscriber.Property(entity => entity.IsActive).HasDefaultValue(false);
+        newsletterSubscriber.Property(entity => entity.LotoGridsCount).HasDefaultValue(0);
+        newsletterSubscriber.Property(entity => entity.EuroMillionsGridsCount).HasDefaultValue(0);
+        newsletterSubscriber.HasIndex(entity => entity.Email).IsUnique();
+        newsletterSubscriber.HasIndex(entity => entity.ConfirmToken).IsUnique();
+        newsletterSubscriber.HasIndex(entity => entity.UnsubscribeToken).IsUnique();
+
+        var mailDispatchHistory = modelBuilder.Entity<MailDispatchHistoryEntity>();
+        mailDispatchHistory.ToTable("mail_dispatch_history");
+        mailDispatchHistory.HasKey(entity => entity.Id);
+        mailDispatchHistory.Property(entity => entity.Game).HasConversion<string>().HasMaxLength(32);
+        mailDispatchHistory.Property(entity => entity.DrawDate).HasColumnType("date");
+        mailDispatchHistory.Property(entity => entity.SentAtUtc).HasColumnType("timestamp with time zone");
+        mailDispatchHistory.Property(entity => entity.GridsCountSent).IsRequired();
+        mailDispatchHistory.HasIndex(entity => new { entity.SubscriberId, entity.Game, entity.DrawDate }).IsUnique();
+        mailDispatchHistory.HasOne(entity => entity.Subscriber)
+            .WithMany(subscriber => subscriber.MailDispatchHistory)
+            .HasForeignKey(entity => entity.SubscriberId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         var emailSendLog = modelBuilder.Entity<EmailSendLogEntity>();
         emailSendLog.ToTable("email_send_logs");

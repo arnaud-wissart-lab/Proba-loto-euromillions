@@ -46,9 +46,9 @@ public static class DependencyInjection
                     options.TokenSecret = tokenSecret;
                 }
             });
-        services.AddOptions<SmtpOptions>()
-            .Bind(configuration.GetSection(SmtpOptions.SectionName))
-            .PostConfigure(options => ApplySmtpEnvironmentOverrides(configuration, options));
+        services.AddOptions<MailOptions>()
+            .Bind(configuration.GetSection(MailOptions.SectionName))
+            .PostConfigure(options => ApplyMailEnvironmentOverrides(configuration, options));
 
         services.AddDbContext<LotteryDbContext>(options =>
             options.UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure()));
@@ -86,41 +86,82 @@ public static class DependencyInjection
         services.AddScoped<IStatusService, StatusService>();
         services.AddScoped<IStatisticsService, StatisticsService>();
         services.AddScoped<IGridGenerationService, GridGenerationService>();
+        services.AddScoped<IDrawScheduleResolver, DrawScheduleResolver>();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddScoped<SubscriptionService>();
         services.AddScoped<ISubscriptionService>(provider => provider.GetRequiredService<SubscriptionService>());
         services.AddScoped<ISubscriptionDispatchService>(provider => provider.GetRequiredService<SubscriptionService>());
+        services.AddScoped<INewsletterService, NewsletterService>();
+        services.AddScoped<INewsletterDispatchService, NewsletterDispatchService>();
 
         return services;
     }
 
-    private static void ApplySmtpEnvironmentOverrides(IConfiguration configuration, SmtpOptions options)
+    private static void ApplyMailEnvironmentOverrides(IConfiguration configuration, MailOptions options)
     {
-        options.Host = configuration["SMTP_HOST"] ?? options.Host;
-        options.Username = configuration["SMTP_USER"] ?? options.Username;
-        options.Password = configuration["SMTP_PASS"] ?? options.Password;
-
-        var rawPort = configuration["SMTP_PORT"];
-        if (int.TryParse(rawPort, out var parsedPort))
+        var legacyBaseUrl = configuration["PUBLIC_BASE_URL"];
+        if (!string.IsNullOrWhiteSpace(legacyBaseUrl))
         {
-            options.Port = parsedPort;
+            options.BaseUrl = legacyBaseUrl;
+        }
+
+        var legacyHost = configuration["SMTP_HOST"] ?? configuration["Smtp:Host"];
+        if (!string.IsNullOrWhiteSpace(legacyHost))
+        {
+            options.Smtp.Host = legacyHost;
+        }
+
+        var legacyPort = configuration["SMTP_PORT"] ?? configuration["Smtp:Port"];
+        if (int.TryParse(legacyPort, out var parsedPort))
+        {
+            options.Smtp.Port = parsedPort;
+        }
+
+        var legacyUsername = configuration["SMTP_USER"] ?? configuration["Smtp:Username"];
+        if (!string.IsNullOrWhiteSpace(legacyUsername))
+        {
+            options.Smtp.Username = legacyUsername;
+        }
+
+        var legacyPassword = configuration["SMTP_PASS"] ?? configuration["Smtp:Password"];
+        if (!string.IsNullOrWhiteSpace(legacyPassword))
+        {
+            options.Smtp.Password = legacyPassword;
+        }
+
+        var legacyUseSsl = configuration["SMTP_USE_STARTTLS"] ?? configuration["Smtp:UseStartTls"];
+        if (bool.TryParse(legacyUseSsl, out var parsedUseSsl))
+        {
+            options.Smtp.UseSsl = parsedUseSsl;
         }
 
         var rawSender = configuration["SMTP_FROM"];
         if (string.IsNullOrWhiteSpace(rawSender))
         {
+            var legacySenderAddress = configuration["Smtp:SenderAddress"];
+            if (!string.IsNullOrWhiteSpace(legacySenderAddress))
+            {
+                options.From = legacySenderAddress;
+            }
+
+            var legacySenderName = configuration["Smtp:SenderName"];
+            if (!string.IsNullOrWhiteSpace(legacySenderName))
+            {
+                options.FromName = legacySenderName;
+            }
+
             return;
         }
 
         if (MailboxAddress.TryParse(rawSender, out var mailboxAddress))
         {
-            options.SenderAddress = mailboxAddress.Address;
-            options.SenderName = string.IsNullOrWhiteSpace(mailboxAddress.Name)
-                ? options.SenderName
+            options.From = mailboxAddress.Address;
+            options.FromName = string.IsNullOrWhiteSpace(mailboxAddress.Name)
+                ? options.FromName
                 : mailboxAddress.Name;
             return;
         }
 
-        options.SenderAddress = rawSender;
+        options.From = rawSender;
     }
 }
