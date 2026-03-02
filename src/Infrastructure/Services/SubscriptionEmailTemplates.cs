@@ -14,8 +14,10 @@ internal static class SubscriptionEmailTemplates
         string unsubscribeLink)
     {
         var gameLabel = subscription.Game == LotteryGame.EuroMillions ? "EuroMillions" : "Loto";
+        var isEuroMillions = subscription.Game == LotteryGame.EuroMillions;
         var strategyLabel = GetStrategyLabel(subscription.Strategy);
         var subject = $"Confirmez votre abonnement – Probabilités {gameLabel}";
+        var gridCountBall = EmailBallRenderer.RenderBall(subscription.GridCount, bonus: isEuroMillions, size: 42);
 
         var textBody = $"""
 Bonjour,
@@ -39,20 +41,27 @@ Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de h
         var htmlBody = $"""
 <!doctype html>
 <html lang="fr">
-<body style="font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
-  <h2>Confirmez votre abonnement</h2>
-  <p>Vous avez demandé un abonnement e-mail pour <strong>Probabilités {gameLabel}</strong>.</p>
-  <p><strong>Paramètres</strong></p>
-  <ul>
-    <li>Jeu: {gameLabel}</li>
-    <li>Nombre de grilles: {subscription.GridCount}</li>
-    <li>Stratégie: {strategyLabel}</li>
-  </ul>
-  <p>
-    <a href="{confirmLink}" style="display:inline-block;padding:10px 14px;background:#0f766e;color:#ffffff;text-decoration:none;border-radius:8px;">Confirmer mon abonnement</a>
-  </p>
-  <p>Si vous souhaitez annuler: <a href="{unsubscribeLink}">Désinscription</a></p>
-  <p style="font-size:12px;color:#475569;">Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de hasard.</p>
+<body style="margin:0;padding:0;background:#f3f6fc;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
+  <div style="max-width:640px;margin:0 auto;padding:22px 14px;">
+    <div style="background:#ffffff;border:1px solid #dbe3f0;border-radius:18px;padding:22px 20px;box-shadow:0 8px 24px rgba(15,23,42,0.08);">
+      <h2 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Confirmez votre abonnement</h2>
+      <p style="margin:0 0 18px;color:#334155;line-height:1.5;">Vous avez demandé un abonnement e-mail pour <strong>Probabilités {gameLabel}</strong>.</p>
+
+      <div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;margin-bottom:14px;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#475569;">Nombre de grilles</p>
+        <div>{gridCountBall}</div>
+      </div>
+
+      <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Jeu:</strong> {gameLabel}</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#334155;"><strong>Stratégie:</strong> {strategyLabel}</p>
+
+      <p style="margin:0 0 16px;">
+        <a href="{confirmLink}" style="display:inline-block;padding:11px 16px;background:#0f766e;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;">Confirmer mon abonnement</a>
+      </p>
+      <p style="margin:0 0 16px;">Si vous souhaitez annuler: <a href="{unsubscribeLink}" style="color:#2563eb;text-decoration:none;">Désinscription</a></p>
+      <p style="margin:0;font-size:12px;color:#64748b;">Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de hasard.</p>
+    </div>
+  </div>
 </body>
 </html>
 """;
@@ -96,24 +105,43 @@ Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de h
         htmlBuilder.Append("""
 <!doctype html>
 <html lang="fr">
-<body style="font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
+<body style="margin:0;padding:0;background:#f3f6fc;font-family:Segoe UI,Arial,sans-serif;color:#0f172a;">
+<div style="max-width:680px;margin:0 auto;padding:22px 14px;">
+  <div style="background:#ffffff;border:1px solid #dbe3f0;border-radius:18px;padding:22px 20px;box-shadow:0 8px 24px rgba(15,23,42,0.08);">
 """);
-        htmlBuilder.AppendLine($"  <h2>Vos grilles {gameLabel}</h2>");
+        htmlBuilder.AppendLine($"  <h2 style=\"margin:0 0 8px;font-size:24px;color:#0f172a;\">Vos grilles {gameLabel}</h2>");
         htmlBuilder.AppendLine(
-            $"  <p>Voici vos <strong>{generatedGrids.Grids.Count}</strong> grille(s) pour le tirage du <strong>{intendedDrawDate:dd/MM/yyyy}</strong> ({drawTimeHint}).</p>");
-        htmlBuilder.AppendLine($"  <p>Stratégie: <strong>{strategyLabel}</strong></p>");
-        htmlBuilder.AppendLine("  <p style=\"font-size:12px;color:#475569;\">Rappel: contenu informatif uniquement. Le jeu reste un jeu de hasard.</p>");
-        htmlBuilder.AppendLine("  <ol>");
+            $"  <p style=\"margin:0 0 6px;color:#334155;line-height:1.5;\">Voici vos <strong>{generatedGrids.Grids.Count}</strong> grille(s) pour le tirage du <strong>{intendedDrawDate:dd/MM/yyyy}</strong> ({drawTimeHint}).</p>");
+        htmlBuilder.AppendLine($"  <p style=\"margin:0 0 14px;color:#334155;\">Stratégie: <strong>{strategyLabel}</strong></p>");
+        htmlBuilder.AppendLine("  <p style=\"margin:0 0 16px;font-size:12px;color:#64748b;\">Rappel: contenu informatif uniquement. Le jeu reste un jeu de hasard.</p>");
+        htmlBuilder.AppendLine("  <ol style=\"margin:0 0 16px;padding-left:20px;\">");
 
         foreach (var grid in generatedGrids.Grids.Select((value, position) => new { Value = value, Index = position + 1 }))
         {
-            htmlBuilder.AppendLine(
-                $"    <li>Grille {grid.Index}: Main [{string.Join(" ", grid.Value.MainNumbers)}] | Bonus [{string.Join(" ", grid.Value.BonusNumbers)}]</li>");
+            var mainRow = EmailBallRenderer.RenderBallRow(grid.Value.MainNumbers);
+            var bonusRow = EmailBallRenderer.RenderBallRow(grid.Value.BonusNumbers, bonus: true);
+
+            htmlBuilder.AppendLine("    <li style=\"margin-bottom:14px;\">");
+            htmlBuilder.AppendLine("      <div style=\"padding:12px 14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;\">");
+            htmlBuilder.AppendLine($"        <p style=\"margin:0 0 8px;font-weight:700;color:#0f172a;\">Grille {grid.Index}</p>");
+            htmlBuilder.AppendLine($"        <p style=\"margin:0 0 6px;font-size:12px;font-weight:700;color:#64748b;\">Numéros</p>");
+            htmlBuilder.AppendLine($"        <div style=\"margin:0 0 6px;\">{mainRow}</div>");
+
+            if (grid.Value.BonusNumbers.Count > 0)
+            {
+                htmlBuilder.AppendLine("        <p style=\"margin:0 0 6px;font-size:12px;font-weight:700;color:#64748b;\">Bonus</p>");
+                htmlBuilder.AppendLine($"        <div>{bonusRow}</div>");
+            }
+
+            htmlBuilder.AppendLine("      </div>");
+            htmlBuilder.AppendLine("    </li>");
         }
 
         htmlBuilder.AppendLine("  </ol>");
-        htmlBuilder.AppendLine($"  <p><a href=\"{unsubscribeLink}\">Désinscription en 1 clic</a></p>");
+        htmlBuilder.AppendLine($"  <p style=\"margin:0;\"><a href=\"{unsubscribeLink}\" style=\"color:#2563eb;text-decoration:none;\">Désinscription en 1 clic</a></p>");
         htmlBuilder.Append("""
+  </div>
+</div>
 </body>
 </html>
 """);
