@@ -44,9 +44,22 @@ public sealed class SmtpEmailSender(
 
     private static MimeMessage BuildMessage(EmailMessage email, MailOptions options)
     {
+        if (!MailboxAddress.TryParse(options.From, out var senderAddress))
+        {
+            throw new InvalidOperationException(
+                $"Configuration e-mail invalide: Mail:From ('{options.From}') n'est pas une adresse valide.");
+        }
+
+        if (!MailboxAddress.TryParse(email.To, out var recipientAddress))
+        {
+            throw new ArgumentException(
+                $"Destinataire e-mail invalide: '{email.To}'.",
+                nameof(email));
+        }
+
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(options.FromName, options.From));
-        message.To.Add(MailboxAddress.Parse(email.To));
+        message.From.Add(new MailboxAddress(options.FromName, senderAddress.Address));
+        message.To.Add(recipientAddress);
         message.Subject = email.Subject;
 
         var builder = new BodyBuilder

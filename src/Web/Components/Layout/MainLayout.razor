@@ -30,10 +30,12 @@
         </MudHidden>
 
         <MudHidden Breakpoint="Breakpoint.LgAndUp">
-            <MudMenu Icon="@Icons.Material.Filled.Menu">
+            <MudMenu Icon="@Icons.Material.Filled.Menu" Class="nav-menu">
                 @foreach (var link in _navigationLinks)
                 {
-                    <MudMenuItem Href="@link.Href" Icon="@link.Icon">@link.Label</MudMenuItem>
+                    <MudMenuItem Href="@link.Href" Icon="@link.Icon" Class="@($"menu-item {link.ToneClass}")">
+                        @link.Label
+                    </MudMenuItem>
                 }
             </MudMenu>
         </MudHidden>
@@ -45,7 +47,6 @@
                                Class="@ThemeToggleClass"
                                OnClick="@ToggleThemeMode" />
             </MudTooltip>
-            <MudText Typo="Typo.body2" Class="theme-mode-label">@ThemeModeLabel</MudText>
         </MudStack>
     </MudAppBar>
 
@@ -67,7 +68,6 @@
     private static readonly MudTheme AppTheme = BuildTheme();
     private bool _isDarkMode;
 
-    private string ThemeModeLabel => _isDarkMode ? "Nuit" : "Jour";
     private string ThemeModeTooltip => _isDarkMode ? "Passer en mode Jour" : "Passer en mode Nuit";
     private string ThemeToggleIcon => _isDarkMode ? Icons.Material.Filled.Bedtime : Icons.Material.Filled.WbSunny;
     private string ThemeToggleClass => _isDarkMode ? "theme-icon-button is-night" : "theme-icon-button is-day";

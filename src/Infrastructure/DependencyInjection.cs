@@ -12,11 +12,17 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using Polly;
 using Polly.Extensions.Http;
+using System.Net.Mail;
+using System.Text.RegularExpressions;
 
 namespace Infrastructure;
 
 public static class DependencyInjection
 {
+    private static readonly Regex SenderEmailRegex = new(
+        @"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}",
+        RegexOptions.Compiled);
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString =
@@ -136,32 +142,107 @@ public static class DependencyInjection
         }
 
         var rawSender = configuration["SMTP_FROM"];
-        if (string.IsNullOrWhiteSpace(rawSender))
+        if (!string.IsNullOrWhiteSpace(rawSender) && TryApplyLegacySender(rawSender, options))
         {
-            var legacySenderAddress = configuration["Smtp:SenderAddress"];
-            if (!string.IsNullOrWhiteSpace(legacySenderAddress))
-            {
-                options.From = legacySenderAddress;
-            }
-
-            var legacySenderName = configuration["Smtp:SenderName"];
-            if (!string.IsNullOrWhiteSpace(legacySenderName))
-            {
-                options.FromName = legacySenderName;
-            }
-
             return;
         }
 
-        if (MailboxAddress.TryParse(rawSender, out var mailboxAddress))
+        var legacySenderAddress = configuration["Smtp:SenderAddress"];
+        if (!string.IsNullOrWhiteSpace(legacySenderAddress))
+        {
+            options.From = legacySenderAddress;
+        }
+
+        var legacySenderName = configuration["Smtp:SenderName"];
+        if (!string.IsNullOrWhiteSpace(legacySenderName))
+        {
+            options.FromName = legacySenderName;
+        }
+    }
+
+    private static bool TryApplyLegacySender(string rawSender, MailOptions options)
+    {
+        var normalizedSender = NormalizeLegacySender(rawSender);
+        if (string.IsNullOrWhiteSpace(normalizedSender))
+        {
+            return false;
+        }
+
+        if (MailboxAddress.TryParse(normalizedSender, out var mailboxAddress))
         {
             options.From = mailboxAddress.Address;
-            options.FromName = string.IsNullOrWhiteSpace(mailboxAddress.Name)
-                ? options.FromName
-                : mailboxAddress.Name;
-            return;
+            if (!string.IsNullOrWhiteSpace(mailboxAddress.Name))
+            {
+                options.FromName = mailboxAddress.Name;
+            }
+
+            return true;
         }
 
-        options.From = rawSender;
+        if (!TryExtractSenderAddress(normalizedSender, out var senderAddress))
+        {
+            return false;
+        }
+
+        options.From = senderAddress;
+
+        var senderName = ExtractSenderName(normalizedSender);
+        if (!string.IsNullOrWhiteSpace(senderName))
+        {
+            options.FromName = senderName;
+        }
+
+        return true;
+    }
+
+    private static string NormalizeLegacySender(string rawSender)
+    {
+        const string marker = "SMTP_FROM=";
+
+        var normalized = rawSender.Trim();
+        var markerIndex = normalized.LastIndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (markerIndex >= 0)
+        {
+            normalized = normalized[(markerIndex + marker.Length)..].Trim();
+        }
+
+        return normalized;
+    }
+
+    private static bool TryExtractSenderAddress(string rawSender, out string senderAddress)
+    {
+        senderAddress = string.Empty;
+
+        if (MailAddress.TryCreate(rawSender, out var parsedAddress))
+        {
+            senderAddress = parsedAddress.Address;
+            return true;
+        }
+
+        var matches = SenderEmailRegex.Matches(rawSender);
+        if (matches.Count == 0)
+        {
+            return false;
+        }
+
+        senderAddress = matches[^1].Value;
+        return true;
+    }
+
+    private static string? ExtractSenderName(string rawSender)
+    {
+        var ltIndex = rawSender.IndexOf('<');
+        if (ltIndex <= 0)
+        {
+            return null;
+        }
+
+        var name = rawSender[..ltIndex].Trim().Trim('"', '\'');
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        return Regex.Replace(name, @"\s+", " ");
     }
 }

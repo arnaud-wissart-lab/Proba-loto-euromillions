@@ -138,11 +138,13 @@ h6,
     letter-spacing: 0.2px;
 }
 
-.nav-button .mud-button-start-icon {
+.nav-button .mud-button-start-icon,
+.nav-button .mud-button-icon-start {
     margin-inline: 0 0.45rem;
 }
 
-.nav-button .mud-button-start-icon .mud-icon-root {
+.nav-button .mud-button-start-icon .mud-icon-root,
+.nav-button .mud-button-icon-start .mud-icon-root {
     font-size: 1.15rem;
     width: 1.75rem;
     height: 1.75rem;
@@ -161,58 +163,144 @@ h6,
     background: color-mix(in srgb, var(--theme-accent-soft), transparent 35%);
 }
 
-.nav-button.tone-home .mud-button-start-icon .mud-icon-root {
+.nav-button.tone-home .mud-button-start-icon .mud-icon-root,
+.nav-button.tone-home .mud-button-icon-start .mud-icon-root {
     color: #2563eb;
     background: #dbeafe;
 }
 
-.nav-button.tone-grids .mud-button-start-icon .mud-icon-root {
+.nav-button.tone-grids .mud-button-start-icon .mud-icon-root,
+.nav-button.tone-grids .mud-button-icon-start .mud-icon-root {
     color: #d97706;
     background: #fef3c7;
 }
 
-.nav-button.tone-stats .mud-button-start-icon .mud-icon-root {
+.nav-button.tone-stats .mud-button-start-icon .mud-icon-root,
+.nav-button.tone-stats .mud-button-icon-start .mud-icon-root {
     color: #0f766e;
     background: #ccfbf1;
 }
 
-.nav-button.tone-subscribe .mud-button-start-icon .mud-icon-root {
+.nav-button.tone-subscribe .mud-button-start-icon .mud-icon-root,
+.nav-button.tone-subscribe .mud-button-icon-start .mud-icon-root {
     color: #4f46e5;
     background: #e0e7ff;
 }
 
-.nav-button.tone-admin .mud-button-start-icon .mud-icon-root {
+.nav-button.tone-admin .mud-button-start-icon .mud-icon-root,
+.nav-button.tone-admin .mud-button-icon-start .mud-icon-root {
     color: #be185d;
     background: #fce7f3;
 }
 
-.app-shell.mode-dark .nav-button.tone-home .mud-button-start-icon .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-home .mud-button-start-icon .mud-icon-root,
+.app-shell.mode-dark .nav-button.tone-home .mud-button-icon-start .mud-icon-root {
     color: #93c5fd;
     background: #1d4f92;
 }
 
-.app-shell.mode-dark .nav-button.tone-grids .mud-button-start-icon .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-grids .mud-button-start-icon .mud-icon-root,
+.app-shell.mode-dark .nav-button.tone-grids .mud-button-icon-start .mud-icon-root {
     color: #fdba74;
     background: #7c4515;
 }
 
-.app-shell.mode-dark .nav-button.tone-stats .mud-button-start-icon .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-stats .mud-button-start-icon .mud-icon-root,
+.app-shell.mode-dark .nav-button.tone-stats .mud-button-icon-start .mud-icon-root {
     color: #5eead4;
     background: #125f5a;
 }
 
-.app-shell.mode-dark .nav-button.tone-subscribe .mud-button-start-icon .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-subscribe .mud-button-start-icon .mud-icon-root,
+.app-shell.mode-dark .nav-button.tone-subscribe .mud-button-icon-start .mud-icon-root {
     color: #c4b5fd;
     background: #4338ca;
 }
 
-.app-shell.mode-dark .nav-button.tone-admin .mud-button-start-icon .mud-icon-root {
+.app-shell.mode-dark .nav-button.tone-admin .mud-button-start-icon .mud-icon-root,
+.app-shell.mode-dark .nav-button.tone-admin .mud-button-icon-start .mud-icon-root {
     color: #f9a8d4;
     background: #7a1f4f;
 }
 
 .theme-toggle {
     margin-left: 0.35rem;
+}
+
+.nav-menu .mud-icon-button {
+    border-radius: 999px !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-main) !important;
+    background: color-mix(in srgb, var(--panel-bg), #fff 16%);
+}
+
+.nav-menu .mud-icon-button:hover {
+    background: color-mix(in srgb, var(--theme-accent-soft), transparent 26%);
+}
+
+.menu-item .mud-list-item-icon {
+    border-radius: 999px;
+    width: 1.65rem;
+    height: 1.65rem;
+    min-width: 1.65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.55rem;
+}
+
+.menu-item.tone-home .mud-list-item-icon {
+    color: #2563eb;
+    background: #dbeafe;
+}
+
+.menu-item.tone-grids .mud-list-item-icon {
+    color: #d97706;
+    background: #fef3c7;
+}
+
+.menu-item.tone-stats .mud-list-item-icon {
+    color: #0f766e;
+    background: #ccfbf1;
+}
+
+.menu-item.tone-subscribe .mud-list-item-icon {
+    color: #4f46e5;
+    background: #e0e7ff;
+}
+
+.menu-item.tone-admin .mud-list-item-icon {
+    color: #be185d;
+    background: #fce7f3;
+}
+
+.app-shell.mode-dark .menu-item.tone-home .mud-list-item-icon {
+    color: #93c5fd;
+    background: #1d4f92;
+}
+
+.app-shell.mode-dark .menu-item.tone-grids .mud-list-item-icon {
+    color: #fdba74;
+    background: #7c4515;
+}
+
+.app-shell.mode-dark .menu-item.tone-stats .mud-list-item-icon {
+    color: #5eead4;
+    background: #125f5a;
+}
+
+.app-shell.mode-dark .menu-item.tone-subscribe .mud-list-item-icon {
+    color: #c4b5fd;
+    background: #4338ca;
+}
+
+.app-shell.mode-dark .menu-item.tone-admin .mud-list-item-icon {
+    color: #f9a8d4;
+    background: #7a1f4f;
+}
+
+.menu-item .mud-list-item-icon .mud-icon-root {
+    color: inherit;
 }
 
 .theme-icon-button {
@@ -243,12 +331,6 @@ h6,
 
 .theme-icon-button:hover {
     transform: translateY(-1px);
-}
-
-.theme-mode-label {
-    font-weight: 700;
-    color: var(--text-main);
-    min-width: 2.6rem;
 }
 
 .main-content {
@@ -524,10 +606,6 @@ code {
         width: 1.6rem;
         height: 1.6rem;
         font-size: 1.04rem;
-    }
-
-    .theme-mode-label {
-        display: none;
     }
 
     .hero-actions .mud-button-root {

@@ -84,4 +84,48 @@ public sealed class MailOptionsMappingTests
         Assert.Equal("Proba Loto", options.FromName);
         Assert.Equal("https://legacy.example.local", options.BaseUrl);
     }
+
+    [Fact]
+    public void AddInfrastructureShouldKeepConfiguredMailFromWhenLegacySenderIsInvalid()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Postgres"] = "Host=localhost;Port=5432;Database=test;Username=test;Password=test",
+                ["Mail:From"] = "contact@example.local",
+                ["Mail:FromName"] = "Proba Loto",
+                ["SMTP_FROM"] = "invalid sender value without email"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddInfrastructure(configuration);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<IOptions<MailOptions>>().Value;
+
+        Assert.Equal("contact@example.local", options.From);
+        Assert.Equal("Proba Loto", options.FromName);
+    }
+
+    [Fact]
+    public void AddInfrastructureShouldExtractAddressFromCorruptedLegacySenderValue()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Postgres"] = "Host=localhost;Port=5432;Database=test;Username=test;Password=test",
+                ["SMTP_FROM"] = "Probabilites Loto SMTP_FROM=Probabilites Loto & EuroMillions <contact@arnaudwissart.fr> EuroMillions <contact@arnaudwissart.fr>"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddInfrastructure(configuration);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<IOptions<MailOptions>>().Value;
+
+        Assert.Equal("contact@arnaudwissart.fr", options.From);
+        Assert.Equal("Probabilites Loto & EuroMillions", options.FromName);
+    }
 }
