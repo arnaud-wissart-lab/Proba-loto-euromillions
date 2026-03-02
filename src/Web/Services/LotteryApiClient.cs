@@ -148,6 +148,25 @@ public sealed class LotteryApiClient(
         }
     }
 
+    public async Task<ApiSubscriptionActionResponse?> ConfirmNewsletterSubscriptionAsync(
+        string token,
+        CancellationToken cancellationToken)
+    {
+        var client = httpClientFactory.CreateClient(ClientName);
+
+        try
+        {
+            var escapedToken = Uri.EscapeDataString(token);
+            using var response = await client.GetAsync($"/api/v1/newsletter/confirm-action?token={escapedToken}", cancellationToken);
+            return await response.Content.ReadFromJsonAsync<ApiSubscriptionActionResponse>(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Impossible de confirmer l'abonnement newsletter.");
+            return null;
+        }
+    }
+
     public async Task<ApiSubscriptionActionResponse?> UpdateNewsletterPreferencesAsync(
         ApiNewsletterPreferencesUpdateRequest request,
         CancellationToken cancellationToken)
@@ -185,6 +204,25 @@ public sealed class LotteryApiClient(
         catch (Exception exception)
         {
             logger.LogWarning(exception, "Impossible de désinscrire l'abonnement.");
+            return null;
+        }
+    }
+
+    public async Task<ApiSubscriptionActionResponse?> UnsubscribeNewsletterAsync(
+        string token,
+        CancellationToken cancellationToken)
+    {
+        var client = httpClientFactory.CreateClient(ClientName);
+
+        try
+        {
+            var escapedToken = Uri.EscapeDataString(token);
+            using var response = await client.GetAsync($"/api/v1/newsletter/unsubscribe-action?token={escapedToken}", cancellationToken);
+            return await response.Content.ReadFromJsonAsync<ApiSubscriptionActionResponse>(cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Impossible de desinscrire l'abonnement newsletter.");
             return null;
         }
     }

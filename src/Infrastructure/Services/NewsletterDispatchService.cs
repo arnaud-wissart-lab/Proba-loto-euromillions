@@ -200,7 +200,7 @@ public sealed class NewsletterDispatchService(
         var subject = $"[Proba] Vos grilles {gameLabel} - Tirage du {drawDate:dd/MM/yyyy}";
         var baseUrl = mailOptions.Value.BaseUrl.TrimEnd('/');
         var preferencesLink = BuildTokenizedLink(baseUrl, "/abonnement/preferences", subscriber.UnsubscribeToken);
-        var unsubscribeLink = BuildTokenizedLink(baseUrl, "/api/v1/newsletter/unsubscribe", subscriber.UnsubscribeToken);
+        var unsubscribeLink = BuildTokenizedLink(baseUrl, "/abonnement/desinscription", subscriber.UnsubscribeToken);
 
         var textBuilder = new StringBuilder();
         textBuilder.AppendLine("Bonjour,");

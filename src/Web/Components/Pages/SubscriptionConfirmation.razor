@@ -1,4 +1,6 @@
 @page "/abonnement/confirmation"
+@inject LotteryApiClient LotteryApiClient
+@inject ILogger<SubscriptionConfirmation> Logger
 
 <PageTitle>Abonnement confirme</PageTitle>
 
@@ -6,24 +8,77 @@
     <MudPaper Elevation="1" Class="section-panel">
         <MudText Typo="Typo.h4" GutterBottom="true">Confirmation</MudText>
 
-        @if (IsSuccessStatus)
+        @if (_isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (_isSuccess)
         {
             <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true">
-                Votre abonnement est confirme.
+                @_message
             </MudAlert>
         }
         else
         {
             <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Dense="true">
-                Lien de confirmation invalide ou expire.
+                @_message
             </MudAlert>
         }
     </MudPaper>
 </MudContainer>
 
 @code {
+    [SupplyParameterFromQuery(Name = "token")]
+    private string? Token { get; set; }
+
     [SupplyParameterFromQuery(Name = "status")]
     private string? Status { get; set; }
 
-    private bool IsSuccessStatus => string.Equals(Status, "success", StringComparison.OrdinalIgnoreCase);
+    private string? _loadedToken;
+    private bool _isLoading;
+    private bool _isSuccess;
+    private string _message = "Lien de confirmation invalide ou expire.";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Token))
+        {
+            if (string.Equals(_loadedToken, Token, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _loadedToken = Token;
+            _isLoading = true;
+            _isSuccess = false;
+            _message = "Traitement en cours...";
+
+            try
+            {
+                var actionResult = await LotteryApiClient.ConfirmNewsletterSubscriptionAsync(Token, CancellationToken.None)
+                    ?? await LotteryApiClient.ConfirmSubscriptionAsync(Token, CancellationToken.None);
+
+                _isSuccess = actionResult?.Success == true;
+                _message = actionResult?.Message ?? "Lien de confirmation invalide ou expire.";
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception, "Erreur de confirmation d'abonnement.");
+                _isSuccess = false;
+                _message = "Une erreur est survenue pendant la confirmation.";
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+
+            return;
+        }
+
+        _isLoading = false;
+        _isSuccess = string.Equals(Status, "success", StringComparison.OrdinalIgnoreCase);
+        _message = _isSuccess
+            ? "Votre abonnement est confirme."
+            : "Lien de confirmation invalide ou expire.";
+    }
 }

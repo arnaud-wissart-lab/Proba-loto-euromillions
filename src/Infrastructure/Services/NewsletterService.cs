@@ -50,8 +50,8 @@ public sealed class NewsletterService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var publicBaseUrl = mailOptions.Value.BaseUrl.TrimEnd('/');
-        var confirmLink = BuildTokenizedLink(publicBaseUrl, "/api/v1/newsletter/confirm", confirmToken);
-        var unsubscribeLink = BuildTokenizedLink(publicBaseUrl, "/api/v1/newsletter/unsubscribe", unsubscribeToken);
+        var confirmLink = BuildTokenizedLink(publicBaseUrl, "/abonnement/confirmation", confirmToken);
+        var unsubscribeLink = BuildTokenizedLink(publicBaseUrl, "/abonnement/desinscription", unsubscribeToken);
         var preferencesLink = BuildTokenizedLink(publicBaseUrl, "/abonnement/preferences", unsubscribeToken);
 
         var message = NewsletterEmailTemplates.BuildConfirmationEmail(

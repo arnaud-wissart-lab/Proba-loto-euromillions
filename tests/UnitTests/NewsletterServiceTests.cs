@@ -65,7 +65,7 @@ public sealed class NewsletterServiceTests
             new NewsletterSubscribeRequestDto("confirm@example.local", 3, 0),
             CancellationToken.None);
 
-        var confirmToken = ExtractTokenFromTextBody(emailSender.Messages.Single().TextBody, "/api/v1/newsletter/confirm?token=");
+        var confirmToken = ExtractTokenFromTextBody(emailSender.Messages.Single().TextBody, "/abonnement/confirmation?token=");
 
         var firstConfirmation = await service.ConfirmAsync(confirmToken, CancellationToken.None);
         var secondConfirmation = await service.ConfirmAsync(confirmToken, CancellationToken.None);

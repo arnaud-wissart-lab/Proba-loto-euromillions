@@ -202,6 +202,21 @@ app.MapGet(
     .Produces(StatusCodes.Status302Found);
 
 app.MapGet(
+        "/api/v1/newsletter/confirm-action",
+        async (string token, INewsletterService newsletterService, CancellationToken cancellationToken) =>
+        {
+            var result = await newsletterService.ConfirmAsync(token, cancellationToken);
+            return result.Success
+                ? Results.Ok(result)
+                : Results.BadRequest(result);
+        })
+    .WithName("GetNewsletterConfirmAction")
+    .WithTags("Newsletter")
+    .WithSummary("Confirme un abonnement newsletter et retourne le resultat JSON.")
+    .Produces<NewsletterActionResultDto>(StatusCodes.Status200OK)
+    .Produces<NewsletterActionResultDto>(StatusCodes.Status400BadRequest);
+
+app.MapGet(
         "/api/v1/newsletter/unsubscribe",
         async (string token, INewsletterService newsletterService, IOptions<MailOptions> mailOptions, CancellationToken cancellationToken) =>
         {
@@ -216,6 +231,21 @@ app.MapGet(
     .WithTags("Newsletter")
     .WithSummary("Desactive un abonnement newsletter puis redirige vers la page web de desinscription.")
     .Produces(StatusCodes.Status302Found);
+
+app.MapGet(
+        "/api/v1/newsletter/unsubscribe-action",
+        async (string token, INewsletterService newsletterService, CancellationToken cancellationToken) =>
+        {
+            var result = await newsletterService.UnsubscribeAsync(token, cancellationToken);
+            return result.Success
+                ? Results.Ok(result)
+                : Results.BadRequest(result);
+        })
+    .WithName("GetNewsletterUnsubscribeAction")
+    .WithTags("Newsletter")
+    .WithSummary("Desactive un abonnement newsletter et retourne le resultat JSON.")
+    .Produces<NewsletterActionResultDto>(StatusCodes.Status200OK)
+    .Produces<NewsletterActionResultDto>(StatusCodes.Status400BadRequest);
 
 app.MapGet(
         "/api/v1/newsletter/preferences",
