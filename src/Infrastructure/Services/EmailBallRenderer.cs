@@ -7,21 +7,21 @@ internal static class EmailBallRenderer
     public static string RenderBall(int value, bool bonus = false, int size = 30)
     {
         var background = bonus
-            ? "linear-gradient(140deg,#60a5fa,#2563eb)"
-            : "linear-gradient(140deg,#fb923c,#ea580c)";
+            ? "#bfdbfe"
+            : "#fed7aa";
         var border = bonus
-            ? "rgba(37,99,235,0.45)"
-            : "rgba(234,88,12,0.45)";
+            ? "#60a5fa"
+            : "#fb923c";
         var fontSize = size >= 40 ? 15 : 13;
 
         return
-            $"<span style=\"display:inline-flex;align-items:center;justify-content:center;width:{size}px;height:{size}px;border-radius:999px;margin:0 6px 6px 0;background:{background};color:#ffffff;font-size:{fontSize}px;font-weight:800;line-height:1;box-shadow:inset 0 -5px 8px rgba(0,0,0,0.18),0 3px 8px rgba(15,23,42,0.22);border:1px solid {border};\">{value}</span>";
+            $"<span style=\"display:inline-block;width:{size}px;height:{size}px;line-height:{size}px;text-align:center;vertical-align:middle;border-radius:50%;margin:0 6px 6px 0;background-color:{background};color:#0f172a;font-size:{fontSize}px;font-weight:800;font-family:Arial,sans-serif;border:1px solid {border};box-sizing:border-box;mso-line-height-rule:exactly;\">{value}</span>";
     }
 
     public static string RenderBallRow(IEnumerable<int> numbers, bool bonus = false, int size = 30)
     {
         var builder = new StringBuilder();
-        builder.Append("<span style=\"display:inline-flex;flex-wrap:wrap;vertical-align:middle;\">");
+        builder.Append("<span style=\"display:inline-block;vertical-align:middle;line-height:0;\">");
 
         foreach (var number in numbers)
         {

@@ -14,10 +14,8 @@ internal static class SubscriptionEmailTemplates
         string unsubscribeLink)
     {
         var gameLabel = subscription.Game == LotteryGame.EuroMillions ? "EuroMillions" : "Loto";
-        var isEuroMillions = subscription.Game == LotteryGame.EuroMillions;
         var strategyLabel = GetStrategyLabel(subscription.Strategy);
         var subject = $"Confirmez votre abonnement – Probabilités {gameLabel}";
-        var gridCountBall = EmailBallRenderer.RenderBall(subscription.GridCount, bonus: isEuroMillions, size: 42);
 
         var textBody = $"""
 Bonjour,
@@ -46,12 +44,7 @@ Message informatif: ce service ne prédit aucun tirage. Le jeu reste un jeu de h
     <div style="background:#ffffff;border:1px solid #dbe3f0;border-radius:18px;padding:22px 20px;box-shadow:0 8px 24px rgba(15,23,42,0.08);">
       <h2 style="margin:0 0 8px;font-size:24px;color:#0f172a;">Confirmez votre abonnement</h2>
       <p style="margin:0 0 18px;color:#334155;line-height:1.5;">Vous avez demandé un abonnement e-mail pour <strong>Probabilités {gameLabel}</strong>.</p>
-
-      <div style="padding:12px 14px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;margin-bottom:14px;">
-        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#475569;">Nombre de grilles</p>
-        <div>{gridCountBall}</div>
-      </div>
-
+      <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Nombre de grilles:</strong> {subscription.GridCount}</p>
       <p style="margin:0 0 8px;font-size:14px;color:#334155;"><strong>Jeu:</strong> {gameLabel}</p>
       <p style="margin:0 0 16px;font-size:14px;color:#334155;"><strong>Stratégie:</strong> {strategyLabel}</p>
 
