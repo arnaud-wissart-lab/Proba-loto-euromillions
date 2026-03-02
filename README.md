@@ -93,6 +93,29 @@ ops/
 - .NET SDK 10.0.103+;
 - Docker Desktop (ou Docker Engine + Compose).
 
+## Gestion des secrets (.env)
+- ne jamais committer `.env` (fichier ignore par Git);
+- pour le local, copier le template versionne puis renseigner les valeurs:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+- en production, utiliser des variables d'environnement injectees par la plateforme (ex: `deploy/home.env` sur la machine cible), pas des secrets en clair dans le depot.
+
+### Fuite de secret: purge historique (documentation uniquement)
+Si un secret a deja ete committe dans l'historique, il faut:
+1. le revoquer/rotater immediatement (SMTP key, mot de passe, token);
+2. purger l'historique Git (operation manuelle, non executee automatiquement par ce projet), par exemple avec `git filter-repo`.
+
+Exemple (a executer manuellement si necessaire):
+
+```powershell
+git filter-repo --path .env --invert-paths
+git push --force --all
+git push --force --tags
+```
+
 ## Démarrage rapide (Docker Compose, recommandé)
 Depuis la racine du dépôt:
 
