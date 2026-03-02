@@ -11,7 +11,6 @@ internal static class NewsletterEmailTemplates
         int lotoGridsCount,
         int euroMillionsGridsCount,
         string confirmLink,
-        string unsubscribeLink,
         string preferencesLink)
     {
         var textBody = $"""
@@ -29,9 +28,6 @@ Confirmer mon abonnement :
 Gérer mes préférences :
 {preferencesLink}
 
-Me désinscrire :
-{unsubscribeLink}
-
 Message informatif : ce service ne prédit aucun tirage. Le jeu reste un jeu de hasard.
 """;
 
@@ -48,8 +44,9 @@ Message informatif : ce service ne prédit aucun tirage. Le jeu reste un jeu de 
       <p style="margin:0 0 16px;">
         <a href="{confirmLink}" style="display:inline-block;padding:11px 16px;background:#0f766e;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;">Confirmer mon abonnement</a>
       </p>
-      <p style="margin:0 0 8px;"><a href="{preferencesLink}" style="color:#2563eb;text-decoration:none;">Gérer mes préférences</a></p>
-      <p style="margin:0 0 16px;"><a href="{unsubscribeLink}" style="color:#2563eb;text-decoration:none;">Me désinscrire</a></p>
+      <p style="margin:0 0 16px;">
+        <a href="{preferencesLink}" style="display:inline-block;padding:11px 16px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;">Gérer mes préférences</a>
+      </p>
       <p style="margin:0;font-size:12px;color:#64748b;">Message informatif : ce service ne prédit aucun tirage. Le jeu reste un jeu de hasard.</p>
     </div>
   </div>
