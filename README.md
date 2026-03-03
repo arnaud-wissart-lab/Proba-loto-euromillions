@@ -6,7 +6,7 @@ Plateforme .NET de démonstration pour ingérer les tirages FDJ (Loto / EuroMill
 [![Licence MIT](https://img.shields.io/badge/Licence-MIT-green.svg)](./LICENSE)
 
 ## Démo live
-- Application: <https://loto.arnaudwissart.fr>
+- Démo live: [https://loto.arnaudwissart.fr](https://loto.arnaudwissart.fr)
 
 ## Ce que ça démontre
 - Ingestion automatique des tirages Loto et EuroMillions depuis les historiques FDJ, avec découverte d’archives et parsing CSV/Excel tolérant.
