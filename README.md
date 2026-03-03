@@ -19,6 +19,11 @@ Plateforme .NET de démonstration pour ingérer les tirages FDJ (Loto / EuroMill
 - Qualité logicielle industrialisée: tests unitaires + intégration API/PostgreSQL (Testcontainers) + CI `restore/build/test/format`.
 
 ## Captures
+<p align="center">
+  <img src="docs/screenshots/proba1.png" alt="Capture Proba 1 (paysage)" />
+  &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
+  <img src="docs/screenshots/proba2.png" alt="Capture Proba 2 (portrait)" width="250" />
+</p>
 
 
 ## Architecture
