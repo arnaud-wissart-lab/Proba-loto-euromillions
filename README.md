@@ -103,7 +103,6 @@ dotnet format ProbabilitesLotoEuroMillions.sln --verify-no-changes --no-restore
 Couverture de tests du dépôt:
 - Unitaires: `tests/UnitTests` (génération, règles métier, parsing FDJ, newsletter, scheduling).
 - Intégration: `tests/IntegrationTests` (API + PostgreSQL via Testcontainers).
-- E2E: TODO (non implémenté dans ce dépôt).
 
 ## Sécurité & configuration
 Règles:
