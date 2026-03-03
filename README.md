@@ -1,7 +1,6 @@
 # Probabilités Loto & EuroMillions
 Plateforme .NET de démonstration pour ingérer les tirages FDJ (Loto / EuroMillions) et exposer des statistiques, grilles et abonnements e-mail.
 
-## Badges
 [![CI](https://github.com/arnaud-wissart/proba-loto-euromillions/actions/workflows/ci.yml/badge.svg)](./.github/workflows/ci.yml)
 [![Déploiement Manuel](https://github.com/arnaud-wissart/proba-loto-euromillions/actions/workflows/deploy-manual.yml/badge.svg)](./.github/workflows/deploy-manual.yml)
 [![Licence MIT](https://img.shields.io/badge/Licence-MIT-green.svg)](./LICENSE)
