@@ -20,7 +20,7 @@ Plateforme .NET de démonstration pour ingérer les tirages FDJ (Loto / EuroMill
 
 ## Captures
 <p align="center">
-  <img src="docs/screenshots/proba1.png" alt="Capture Proba 1 (paysage)" height="450" />
+  <img src="docs/screenshots/proba1.png" alt="Capture Proba 1 (paysage)" width="400" />
   
   <img src="docs/screenshots/proba2.png" alt="Capture Proba 2 (portrait)" width="250" />
 </p>
