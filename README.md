@@ -19,12 +19,7 @@ Plateforme .NET de démonstration pour ingérer les tirages FDJ (Loto / EuroMill
 - Qualité logicielle industrialisée: tests unitaires + intégration API/PostgreSQL (Testcontainers) + CI `restore/build/test/format`.
 
 ## Captures
-Aucune capture n’est versionnée actuellement (`docs/screenshots/.gitkeep`).
 
-TODO:
-- Ajouter 2 à 4 captures réelles dans `docs/screenshots/`.
-- Utiliser des noms explicites: `home.png`, `statistiques.png`, `grilles.png`, `admin.png`.
-- Référencer ensuite les images en Markdown relatif: `![Accueil](docs/screenshots/home.png)`.
 
 ## Architecture
 ```mermaid
