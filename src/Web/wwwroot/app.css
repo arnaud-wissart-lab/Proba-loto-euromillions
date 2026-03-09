@@ -114,15 +114,25 @@ h6,
     border-bottom: 1px solid var(--border-subtle);
     color: var(--text-main) !important;
     background: color-mix(in srgb, var(--panel-bg), transparent 8%) !important;
-    padding: 0.25rem 0.75rem;
+    min-height: 4.2rem;
+    padding: 0.35rem 0.8rem;
 }
 
 .brand-stack {
+    flex: 1 1 auto;
     min-width: 0;
 }
 
 .brand-icon {
     color: var(--theme-accent);
+}
+
+.brand-title {
+    line-height: 1.12;
+}
+
+.appbar-controls {
+    flex-shrink: 0;
 }
 
 .nav-actions {
@@ -221,10 +231,6 @@ h6,
 .app-shell.mode-dark .nav-button.tone-admin .mud-button-icon-start .mud-icon-root {
     color: #f9a8d4;
     background: #7a1f4f;
-}
-
-.theme-toggle {
-    margin-left: 0.35rem;
 }
 
 .nav-menu .mud-icon-button {
@@ -343,6 +349,7 @@ h6,
 .page-container {
     padding-top: 4.6rem;
     padding-bottom: 2rem;
+    padding-inline: clamp(0.9rem, 3vw, 1.5rem);
     color: var(--text-main);
 }
 
@@ -595,7 +602,33 @@ code {
 
 @media (max-width: 600px) {
     .main-appbar {
-        padding: 0.2rem 0.25rem;
+        min-height: 4.55rem;
+        padding: 0.3rem 0.45rem;
+    }
+
+    .brand-stack {
+        align-items: flex-start !important;
+        gap: 0.45rem;
+        max-width: calc(100% - 6rem);
+    }
+
+    .brand-icon {
+        margin-top: 0.15rem;
+    }
+
+    .brand-title {
+        font-size: 1.02rem !important;
+        line-height: 1.14;
+    }
+
+    .appbar-controls {
+        gap: 0.45rem !important;
+    }
+
+    .nav-menu .mud-icon-button,
+    .theme-icon-button {
+        width: 2.7rem;
+        height: 2.7rem;
     }
 
     .nav-button {
@@ -612,10 +645,37 @@ code {
         width: 100%;
     }
 
+    .landing-container,
+    .page-container {
+        padding-top: 5.35rem;
+        padding-inline: 0.85rem;
+    }
+
+    .section-panel,
+    .hero-panel {
+        border-radius: 18px;
+    }
+
+    .disclaimer-panel,
+    .grid-card,
+    .draw-sim-card {
+        padding: 1rem;
+    }
+
     .number-ball {
-        width: 1.86rem;
-        height: 1.86rem;
-        font-size: 0.84rem;
+        width: 1.78rem;
+        height: 1.78rem;
+        font-size: 0.81rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .brand-title {
+        font-size: 0.96rem !important;
+    }
+
+    .brand-stack {
+        max-width: calc(100% - 5.7rem);
     }
 }
 
