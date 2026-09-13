@@ -218,13 +218,13 @@ fi
 compose_base_args+=(--env-file "$ENV_FILE_PATH")
 log "Fichier env utilise: ${ENV_FILE_PATH}"
 
-if docker ps -a --format '{{.Names}}' | grep -Fxq 'loto'; then
-  log "Suppression du conteneur historique loto pour liberer le port 8083."
-  docker rm -f loto >/dev/null || true
+log "Construction des images avec actualisation des images de base"
+compose build --pull
+log "Démarrage et attente de la santé des services"
+if ! compose up -d --remove-orphans --wait --wait-timeout 300; then
+  dump_diagnostics
+  exit 1
 fi
-
-log "Build et demarrage de la stack home via docker compose"
-compose up -d --build --remove-orphans
 
 max_attempts=$((HEALTH_TIMEOUT_SECONDS / HEALTH_POLL_SECONDS))
 if [ "$max_attempts" -lt 1 ]; then

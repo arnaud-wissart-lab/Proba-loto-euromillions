@@ -65,6 +65,15 @@ Source: [`deploy/home.env.example`](../deploy/home.env.example)
 - `MAIL__SCHEDULE__FORCE=false`
 
 ## Vérifications opérationnelles
+
+Le déploiement reconstruit les images avec `--pull`, puis attend la santé des services
+avec `docker compose up --wait --wait-timeout 300`. Le conteneur Web contrôle son
+endpoint et celui de l'API ; le contrôle API vérifie notamment PostgreSQL. Le worker
+doit être démarré, mais ne dispose pas de sonde HTTP. Les images applicatives
+s'exécutent avec l'utilisateur non privilégié `app`.
+
+Les images Web et API installent explicitement `curl` pour les sondes. Un contrôle
+HTTP lancé depuis l'hôte ne suffit pas à vérifier que la sonde interne fonctionne.
 ```bash
 docker compose -p probaloto-home -f deploy/home.compose.yml --env-file deploy/home.env ps
 docker compose -p probaloto-home -f deploy/home.compose.yml --env-file deploy/home.env logs --tail 120 web api worker postgres

@@ -23,4 +23,5 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/publish .
+USER app
 ENTRYPOINT ["dotnet", "Worker.dll"]
