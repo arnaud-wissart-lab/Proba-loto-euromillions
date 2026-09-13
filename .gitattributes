@@ -61,3 +61,12 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# Fins de ligne cohérentes avec les contrôles de formatage et Linux.
+*.cs text eol=lf
+*.razor text eol=lf
+*.csproj text eol=lf
+*.props text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*Dockerfile text eol=lf

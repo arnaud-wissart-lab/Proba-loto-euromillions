@@ -32,6 +32,13 @@ services:
       Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_1:-https://loto.example.com}
       HealthChecks__Smtp__Enabled: ${HEALTHCHECKS_SMTP_ENABLED:-false}
 
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "3", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   worker:
     container_name: probaloto-home-worker
     build:
@@ -58,7 +65,7 @@ services:
       - ./home.env
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Api__BaseUrl: http://api:8080
@@ -68,7 +75,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "if command -v curl >/dev/null 2>&1; then curl -fsS http://localhost:8080/health >/dev/null; else wget -q -O- http://localhost:8080/health >/dev/null; fi",
+          "curl -fsS --max-time 3 http://localhost:8080/health >/dev/null && curl -fsS --max-time 3 http://api:8080/health >/dev/null",
         ]
       interval: 10s
       timeout: 5s

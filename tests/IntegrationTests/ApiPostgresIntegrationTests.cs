@@ -213,8 +213,7 @@ public sealed class ApiPostgresIntegrationTests : IClassFixture<ApiPostgresInteg
 
     public sealed class ApiPostgresFactory : WebApplicationFactory<Program>
     {
-        private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-            .WithImage("postgres:17-alpine")
+        private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
             .WithDatabase("probabilites_tests")
             .WithUsername("probaloto")
             .WithPassword("probaloto")
