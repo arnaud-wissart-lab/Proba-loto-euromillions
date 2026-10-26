@@ -18,4 +18,8 @@
     <UserSecretsId>c046259c-2d27-42ce-8742-00160a5451db</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Version corrigée imposée pour supprimer une dépendance vulnérable détectée par NuGet. -->
+    <PackageReference Include="MessagePack" Version="2.5.303" />
+  </ItemGroup>
 </Project>
