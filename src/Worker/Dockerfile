@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.403 AS build
 WORKDIR /src
 
 COPY ["global.json", "."]
@@ -15,7 +15,7 @@ RUN dotnet restore "src/Worker/Worker.csproj"
 COPY . .
 RUN dotnet publish "src/Worker/Worker.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.14 AS final
 WORKDIR /app
 
 RUN apt-get update \
